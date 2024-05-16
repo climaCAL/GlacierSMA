@@ -4,14 +4,16 @@ class Module;
 
 class Ressource {
     
-    enum State {
-        UNAVAILABLE = -1,
-        DISABLED = 0,
-        ENABLED = 1
-    };
+    public:
+        enum State {
+            UNAVAILABLE = -1,
+            DISABLED = 0,
+            ENABLED = 1
+        };
+
+        const char* name;
 
     private:
-        const char* name;
         State state = State::DISABLED;
 
     protected:
