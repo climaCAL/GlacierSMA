@@ -7,7 +7,7 @@ void configureIridium()
 }
 
 // Write data from structure to transmit buffer
-void writeBuffer()
+void writeMoSbdBuffer()
 {
   iterationCounter++; // Increment iteration counter
   transmitCounter++; // Increment data transmission counter

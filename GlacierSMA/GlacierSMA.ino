@@ -298,9 +298,9 @@ typedef union
     int16_t   roll;               // Roll (°)                       (2 bytes)   * 100
     uint32_t  solar;              // Solar illuminance (lx)         (4 bytes)   * 10000
     uint16_t  windSpeed;          // Mean wind speed (m/s)          (2 bytes)   * 100
-    uint16_t  windDirection;      // Mean wind direction (°)        (2 bytes)	* 10
+    uint16_t  windDirection;      // Mean wind direction (°)        (2 bytes)	  * 10
     uint16_t  windGustSpeed;      // Wind gust speed (m/s)          (2 bytes)   * 100
-    uint16_t  windGustDirection;  // Wind gust direction (°)        (2 bytes)	* 10
+    uint16_t  windGustDirection;  // Wind gust direction (°)        (2 bytes)	  * 10
     int32_t   latitude;           // Latitude (DD)                  (4 bytes)   * 1000000
     int32_t   longitude;          // Longitude (DD)                 (4 bytes)   * 1000000
     uint8_t   satellites;         // # of satellites                (1 byte)
@@ -309,7 +309,7 @@ typedef union
     uint16_t  transmitDuration;   // Previous transmission duration (2 bytes)
     uint8_t   transmitStatus;     // Iridium return code            (1 byte)
     uint16_t  iterationCounter;   // Message counter                (2 bytes)
-  } __attribute__((packed));                                    // Total: (48 bytes)
+  } __attribute__((packed));                              // Total: (48 bytes)
   uint8_t bytes[48];
 } SBD_MO_MESSAGE;
 static_assert(sizeof(SBD_MO_MESSAGE) <= 50, "Message structure exceeds a single credit (50 bytes).");
@@ -579,7 +579,7 @@ void loop()
       if ((sampleCounter == averageInterval) || firstTimeFlag)
       {
         calculateStats(); // Calculate statistics of variables to be transmitted
-        writeBuffer();    // Write data to transmit buffer
+        writeMoSbdBuffer(); // Write data to transmit buffer
 
         // Check if data transmission interval has been reached
         if ((transmitCounter == transmitInterval) || firstTimeFlag)
