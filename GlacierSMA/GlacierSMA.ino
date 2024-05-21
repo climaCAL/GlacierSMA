@@ -37,6 +37,7 @@
 #include <Adafruit_Sensor.h>        // https://github.com/adafruit/Adafruit_Sensor (v1.1.4)
 #include <Arduino.h>                // Required for new Serial instance. Include before <wiring_private.h>
 #include <ArduinoLowPower.h>        // https://github.com/arduino-libraries/ArduinoLowPower (v1.2.2)
+#include <CircularBuffer.hpp>       // https://github.com/rlogiacco/CircularBuffer (v1.4.0)
 #include <IridiumSBD.h>             // https://github.com/sparkfun/SparkFun_IridiumSBD_I2C_Arduino_Library (v3.0.6)
 #include <RTCZero.h>                // https://github.com/arduino-libraries/RTCZero (v1.6.0)
 #include <SdFat.h>                  // https://github.com/greiman/SdFat (v2.1.2)
@@ -579,6 +580,7 @@ void loop()
       if ((sampleCounter == averageInterval) || firstTimeFlag)
       {
         calculateStats(); // Calculate statistics of variables to be transmitted
+        //addMoSbdMessage(); // Add collected data to message buffer
         writeMoSbdBuffer(); // Write data to transmit buffer
 
         // Check if data transmission interval has been reached

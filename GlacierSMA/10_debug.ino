@@ -40,7 +40,7 @@ void printSettings()
   DEBUG_PRINT("loggingMode: ");       printTab(2);  DEBUG_PRINTLN(loggingMode);
   DEBUG_PRINT("batteryCutoff: ");     printTab(2);  DEBUG_PRINTLN(batteryCutoff);
   DEBUG_PRINT("resetFlag: ");         printTab(2);  DEBUG_PRINTLN(resetFlag);
-  DEBUG_PRINT("freeRam(): ");         printTab(2);  DEBUG_PRINTLN(freeRam());
+  DEBUG_PRINT("freeRam(): ");         printTab(2);  DEBUG_PRINTLN(freeRam()); // Does not really belong here but is convenient...
   printLine();
 }
 
@@ -63,6 +63,7 @@ void printTimers()
   DEBUG_PRINT("readGnss: ");        printTab(1);  DEBUG_PRINTLN(timer.readGnss);
   DEBUG_PRINT("writeMicroSd: ");    printTab(1);  DEBUG_PRINTLN(timer.writeMicroSd);
   DEBUG_PRINT("transmitData: ");    printTab(1);  DEBUG_PRINTLN(timer.iridium);
+  DEBUG_PRINT("freeRam(): ");       printTab(1);  DEBUG_PRINTLN(freeRam()); // Does not really belong here but is convenient...
   printLine();
 }
 

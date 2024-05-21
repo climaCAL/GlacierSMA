@@ -1,9 +1,31 @@
+// Circular buffer to hold pending messages
+CircularBuffer<SBD_MO_MESSAGE, 100> messageBuffer;
+
 // Configure RockBLOCK 9603
 void configureIridium()
 {
   modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE); // Assume battery power (USB power: IridiumSBD::USB_POWER_PROFILE)
   modem.adjustSendReceiveTimeout(iridiumTimeout);           // Timeout for Iridium send/receive commands (default = 300 s)
   modem.adjustStartupTimeout(iridiumTimeout / 2);           // Timeout for Iridium startup (default = 240 s)
+}
+
+void addMoSbdMessage() {
+  iterationCounter++; // Increment iteration counter
+  transmitCounter++; // Increment data transmission counter
+  moSbdMessage.iterationCounter = iterationCounter; // Write message counter data to union
+
+  // Copy MO-SBD message structure to message buffer
+  if (!messageBuffer.push(moSbdMessage)) {
+    DEBUG_PRINT("Warning - Message dropped because buffer is full ("); DEBUG_PRINT(messageBuffer.size()); DEBUG_PRINTLN(" messages pending)");
+  }
+
+  // Print MO-SBD union/structure
+  printMoSbd();
+  //printMoSbdHex();
+  //printMoSbdBuffer();
+
+  // Clear MO-SBD message union/structure
+  memset(&moSbdMessage, 0x00, sizeof(moSbdMessage));
 }
 
 // Write data from structure to transmit buffer
