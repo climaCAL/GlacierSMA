@@ -191,7 +191,7 @@ void logData()
       LOG_PRINT(sampleInterval);
       LOG_PRINT(averageInterval);
       LOG_PRINT(transmitInterval);
-      LOG_PRINT(retransmitLimit);
+      LOG_PRINT(transmitLimit);
       LOG_PRINT(gnssTimeout);
       logFile.println(iridiumTimeout); DEBUG_PRINTLN(iridiumTimeout);
 

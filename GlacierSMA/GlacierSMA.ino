@@ -172,8 +172,9 @@ StatisticCAL vStats;               // Wind north-south wind vector component (v)
 #if DEBUG
 unsigned int  sampleInterval    = 1;      // Sampling interval (minutes). Default: 5 min (300 seconds)
 unsigned int  averageInterval   = 15;     // Number of samples to be averaged in each message. Default: 12 (hourly)
-unsigned int  transmitInterval  = 1;      // Number of messages in each Iridium transmission (340-byte limit)
-unsigned int  retransmitLimit   = 5;      // Failed data transmission reattempts (340-byte limit)
+unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
+unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
+const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
 unsigned int  iridiumTimeout    = 120;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 30;     // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 3.0;    // Battery voltage cutoff threshold (V)
@@ -182,8 +183,9 @@ unsigned int  systemRstWDTCountLimit = 5; // Nombre d'alertes WDT autorisées av
 #else
 unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
 unsigned int  averageInterval   = 12;     // Number of samples to be averaged in each message. Default: 12 (hourly)
-unsigned int  transmitInterval  = 1;      // Number of messages in each Iridium transmission (340-byte limit)
-unsigned int  retransmitLimit   = 5;      // Failed data transmission reattempts (340-byte limit)
+unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
+unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
+const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
 unsigned int  iridiumTimeout    = 240;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 120;    // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 11.0;   // Battery voltage cutoff threshold (V)
@@ -223,18 +225,17 @@ bool          firstTimeFlag     = true;   // Flag to determine if program is run
 bool          resetFlag         = false;  // Flag to force system reset using Watchdog Timer
 uint8_t       moSbdBuffer[340];           // Buffer for Mobile Originated SBD (MO-SBD) message (340 bytes max)
 uint8_t       mtSbdBuffer[270];           // Buffer for Mobile Terminated SBD (MT-SBD) message (270 bytes max)
-size_t        moSbdBufferSize;
-size_t        mtSbdBufferSize;
+size_t        moSbdBufferSize   = 0;
+size_t        mtSbdBufferSize   = 0;
 char          logFileName[50]   = "";     // Log file name
 char          dateTime[20]      = "";     // Datetime buffer
-byte          retransmitCounter = 0;      // Counter for Iridium 9603 transmission reattempts
-byte          transmitCounter   = 0;      // Counter for Iridium 9603 transmission intervals
 byte          currentLogFile    = 0;      // Variable for tracking when new microSD log files are created
 byte          currentDate       = 0;      // Variable for tracking when the date changes
 byte          newDate           = 0;      // Variable for tracking when the date changes
+byte          transmitCounter   = 0;      // Counter for Iridium 9603 transmission intervals
 int           transmitStatus    = 0;      // Iridium transmission status code
-unsigned int  iterationCounter  = 0;      // Counter for program iterations (zero indicates a reset)
 unsigned int  failureCounter    = 0;      // Counter of consecutive failed Iridium transmission attempts
+unsigned int  iterationCounter  = 0;      // Counter for program iterations (zero indicates a reset)
 unsigned long previousMillis    = 0;      // Global millis() timer
 unsigned long alarmTime         = 0;      // Global epoch alarm time variable
 unsigned long unixtime          = 0;      // Global epoch time variable
@@ -317,6 +318,9 @@ static_assert(sizeof(SBD_MO_MESSAGE) <= 50, "Message structure exceeds a single 
 //static_assert(sizeof(SBD_MO_MESSAGE) * (1 + retransmitLimit) <= 340, "Retransmit limit too high for a single message (340 bytes).");
 SBD_MO_MESSAGE moSbdMessage;
 
+// Circular buffer to hold pending messages
+CircularBuffer<SBD_MO_MESSAGE, transmitBuffer> messageBuffer; //FIXME Move me with the others (after moving the whole unions/structs section)
+
 // Union to store received Iridium SBD Mobile Terminated (MT) message
 typedef union
 {
@@ -325,7 +329,7 @@ typedef union
     uint8_t   sampleInterval;     // 1 byte
     uint8_t   averageInterval;    // 1 byte
     uint8_t   transmitInterval;   // 1 byte
-    uint8_t   retransmitLimit;    // 1 byte
+    uint8_t   transmitLimit;      // 1 byte
     uint8_t   batteryCutoff;      // 1 byte
     uint8_t   resetFlag;          // 1 byte
   };
@@ -577,18 +581,17 @@ void loop()
       printStats();
 
       // Check if number of samples collected has been reached and calculate statistics (if enabled)
-      if ((sampleCounter == averageInterval) || firstTimeFlag)
+      if ((sampleCounter >= averageInterval) || firstTimeFlag)
       {
         calculateStats(); // Calculate statistics of variables to be transmitted
-        //addMoSbdMessage(); // Add collected data to message buffer
-        writeMoSbdBuffer(); // Write data to transmit buffer
+        addMoSbdMessage(); // Add collected data to message buffer
 
         // Check if data transmission interval has been reached
-        if ((transmitCounter == transmitInterval) || firstTimeFlag)
+        if ((messageBuffer.size() >= transmitInterval) || firstTimeFlag)
         {
           // Check for date change
           checkDate();
-          if (firstTimeFlag || (currentDate != newDate))
+          if ((currentDate != newDate) || firstTimeFlag)
           {
             readGnss(); // Sync RTC with the GNSS
             currentDate = newDate;

@@ -33,8 +33,8 @@ void printSettings()
   DEBUG_PRINT("sampleInterval: ");    printTab(1);  DEBUG_PRINTLN(sampleInterval);
   DEBUG_PRINT("averageInterval: ");   printTab(1);  DEBUG_PRINTLN(averageInterval);
   DEBUG_PRINT("transmitInterval: ");  printTab(1);  DEBUG_PRINTLN(transmitInterval);
-  DEBUG_PRINT("retransmitCounter: "); printTab(1);  DEBUG_PRINTLN(retransmitCounter);
-  DEBUG_PRINT("retransmitLimit: ");   printTab(1);  DEBUG_PRINTLN(retransmitLimit);
+  DEBUG_PRINT("transmitLimit: ");     printTab(2);  DEBUG_PRINTLN(transmitLimit);
+  DEBUG_PRINT("transmitBuffer: ");    printTab(1);  DEBUG_PRINTLN(transmitBuffer);
   DEBUG_PRINT("gnssTimeout: ");       printTab(2);  DEBUG_PRINTLN(gnssTimeout);
   DEBUG_PRINT("iridiumTimeout: ");    printTab(1);  DEBUG_PRINTLN(iridiumTimeout);
   DEBUG_PRINT("loggingMode: ");       printTab(2);  DEBUG_PRINTLN(loggingMode);
@@ -108,7 +108,7 @@ void printMtSbd()
   DEBUG_PRINT("sampleInterval:");   printTab(2);  DEBUG_PRINTLN(mtSbdMessage.sampleInterval);
   DEBUG_PRINT("averageInterval:");  printTab(1);  DEBUG_PRINTLN(mtSbdMessage.averageInterval);
   DEBUG_PRINT("transmitInterval:"); printTab(1);  DEBUG_PRINTLN(mtSbdMessage.transmitInterval);
-  DEBUG_PRINT("retransmitLimit:");  printTab(1);  DEBUG_PRINTLN(mtSbdMessage.retransmitLimit);
+  DEBUG_PRINT("transmitLimit:");    printTab(2);  DEBUG_PRINTLN(mtSbdMessage.transmitLimit);
   DEBUG_PRINT("batteryCutoff:");    printTab(2);  DEBUG_PRINTLN(mtSbdMessage.batteryCutoff);
   DEBUG_PRINT("resetFlag:");        printTab(2);  DEBUG_PRINTLN(mtSbdMessage.resetFlag);
   printLine();
