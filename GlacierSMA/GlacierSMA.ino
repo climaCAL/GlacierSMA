@@ -48,6 +48,9 @@
 #include <wiring_private.h>         // Required for creating new Serial instance
 #include "Adafruit_VEML7700.h"      // Add docs
 
+#include "src/Ressource.h"
+#include "src/Module.h"
+
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
