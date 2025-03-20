@@ -76,9 +76,9 @@ void createLogFile()
 
   // Write header to file
   //FIXME Maybe we should skip this if the file already exists?
-  logFile.println(F("sample,datetime,voltage,temperature_int,humidity_int,pressure_ext,temperature_ext,"
-                    "humidity_ext,pitch,roll,wind_speed,wind_direction,solar,latitude,longitude,satellites,hdop,"
-                    "online_bme280_ext,online_bme280_int,online_lsm303,online_veml7700,online_dfrws,online_gnss,"
+  logFile.println(F("sample,datetime,voltage,pressure_int,temperature_int,humidity_int,pressure_ext,temperature_ext,"
+                    "humidity_ext,pitch,roll,wind_speed,wind_direction,solar,hauteur_neige,temperature_HN,latitude,longitude,"
+                    "satellites,hdop,online_bme280_ext,online_bme280_int,online_lsm303,online_veml7700,online_dfrws,online_gnss,"
                     "online_microSd,online_iridium,timer_readRtc,timer_readBattery,timer_bme280_ext,timer_bme280_int,"
                     "timer_lsm303,timer_veml7700,timer_dfrws,timer_readGnss,timer_writeMicroSd,timer_iridium,"
                     "transmit_status,rtc_drift,free_ram,"
@@ -138,8 +138,9 @@ void logData()
 
       // Sensor information
       LOG_PRINT(samplesSaved);
-      LOG_PRINT(dateTime);
+      LOG_PRINT(datetime);
       LOG_PRINT(voltage);
+      LOG_PRINT(pressureInt);
       LOG_PRINT(temperatureInt);
       LOG_PRINT(humidityInt);
       LOG_PRINT(pressureExt);
@@ -150,12 +151,14 @@ void logData()
       LOG_PRINT(windSpeed);
       LOG_PRINT(windDirection);
       LOG_PRINT(solar);
+      LOG_PRINT(hauteurNeige);
+      LOG_PRINT(temperatureHN);
       logFile.print(latitude, 6);       logFile.print(",");
       DEBUG_PRINT_DEC(latitude, 6);     DEBUG_PRINT(",");
       logFile.print(longitude, 6);      logFile.print(",");
       DEBUG_PRINT_DEC(longitude, 6);    DEBUG_PRINT(",");
       LOG_PRINT(satellites);
-      LOG_PRINT(hdop);
+      LOG_PRINT(hdop); //TODO Could be removed (unused)
 
       // Online information
       LOG_PRINT(online.bme280Ext);

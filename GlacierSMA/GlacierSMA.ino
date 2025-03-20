@@ -47,12 +47,12 @@
 #include <TinyGPS++.h>              // https://github.com/mikalhart/TinyGPSPlus (v1.0.3)
 #include <Wire.h>                   // https://www.arduino.cc/en/Reference/Wire
 #include <wiring_private.h>         // Required for creating new Serial instance
-#include "Adafruit_VEML7700.h"      // Add docs
+#include "src/Adafruit_VEML7700.h"  // Patched version of Adafruit VEML7700 library
 
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "AL4"
+#define CRYOLOGGER_ID "P05_Cegep"
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -70,7 +70,9 @@
 
 #if DEBUG
 #define DEBUG_PRINT(x)            SERIAL_PORT.print(x)
+#define DEBUG_PRINTF(x)           SERIAL_PORT.print(F(x))
 #define DEBUG_PRINTLN(x)          SERIAL_PORT.println(x)
+#define DEBUG_PRINTFLN(x)         SERIAL_PORT.println(F(x))
 #define DEBUG_PRINT_HEX(x)        SERIAL_PORT.print(x, HEX)
 #define DEBUG_PRINTLN_HEX(x)      SERIAL_PORT.println(x, HEX)
 #define DEBUG_PRINT_DEC(x, y)     SERIAL_PORT.print(x, y)
@@ -78,7 +80,9 @@
 #define DEBUG_WRITE(x)            SERIAL_PORT.write(x)
 #else
 #define DEBUG_PRINT(x)
+#define DEBUG_PRINTF(x)
 #define DEBUG_PRINTLN(x)
+#define DEBUG_PRINTFLN(x)
 #define DEBUG_PRINT_HEX(x)
 #define DEBUG_PRINTLN_HEX(x)
 #define DEBUG_PRINT_DEC(x, y)
@@ -87,17 +91,26 @@
 #endif
 
 // ----------------------------------------------------------------------------
+// I2C address definitions
+// ----------------------------------------------------------------------------
+#define BME280_EXT_ADDR     BME280_ADDRESS            // Defined in Adafruit Library = 0x77 - Used for the outside sensor.
+#define BME280_INT_ADDR     BME280_ADDRESS_ALTERNATE  // Defined in Adafruit Library = 0x76 - Used for the inside sensor.
+#define BRIDGE_SENSOR_SLAVE_ADDR 0x66                 // WindSensor module I2C address declaration
+#define VEML_ADDR           0x10 // According to datasheet page 6 (https://www.vishay.com/docs/84286/veml7700.pdf)
+
+// ----------------------------------------------------------------------------
 // Pin definitions
 // ----------------------------------------------------------------------------
 #define PIN_VBAT            A0
-#define PIN_WIND_SPEED      A1
-#define PIN_WIND_DIR        A2
-#define PIN_HUMID           A3
-#define PIN_TEMP            A4
+#define PIN_WIND_SPEED      A1  // Used by Young 5103L and Davis 7911
+#define PIN_WIND_DIR        A2  // Used by Young 5103L and Davis 7911
+#define PIN_HUMID           A3  // Used by HMP60 module
+#define PIN_TEMP            A4  // Used by HMP60 module
 #define PIN_GNSS_EN         A5
 #define PIN_MICROSD_CS      4
 #define PIN_12V_EN          5   // 12 V step-up/down regulator
 #define PIN_5V_EN           6   // 5V step-down regulator
+#define PIN_MICROSD_CD      7   // Detects if the microSD card is present (currently unused)
 #define PIN_LED_GREEN       8   // Green LED
 #define PIN_IRIDIUM_RX      10  // Pin 1 RXD (Yellow)
 #define PIN_IRIDIUM_TX      11  // Pin 6 TXD (Orange)
@@ -105,8 +118,8 @@
 #define PIN_LED_RED         13
 
 // Unused
-#define PIN_SOLAR           7
-#define PIN_SENSOR_PWR      7
+#define PIN_SOLAR           7   // Used by SP212
+#define PIN_SENSOR_PWR      7   // Used by Davis 7911
 #define PIN_RFM95_CS        7   // LoRa "B"
 #define PIN_RFM95_RST       7   // LoRa "A"
 #define PIN_RFM95_INT       7   // LoRa "D"
@@ -121,9 +134,6 @@ Uart Serial2 (&sercom1, PIN_IRIDIUM_RX, PIN_IRIDIUM_TX, SERCOM_RX_PAD_2, UART_TX
 #define SERIAL_PORT   Serial
 #define GNSS_PORT     Serial1
 #define IRIDIUM_PORT  Serial2
-
-//WindSensor module I2C address declaration:
-const uint8_t WIND_SENSOR_SLAVE_ADDR = 0x66;
 
 // Attach interrupt handler to SERCOM for new Serial instance
 void SERCOM1_Handler()
@@ -156,12 +166,14 @@ TinyGPSCustom gnssValidity(gnss, "GPRMC", 2); // Validity
 // ----------------------------------------------------------------------------
 typedef statistic::Statistic<float,uint32_t,false> StatisticCAL;
 StatisticCAL batteryStats;         // Battery voltage
-StatisticCAL temperatureIntStats;  // Internal temperature
-StatisticCAL humidityIntStats;     // Internal humidity
-StatisticCAL pressureExtStats;     // External pressure
-StatisticCAL temperatureExtStats;  // External temperature
-StatisticCAL humidityExtStats;     // External humidity
+StatisticCAL pressureIntStats;     // Pressure from internal sensor
+StatisticCAL temperatureIntStats;  // Temperature from internal sensor
+StatisticCAL humidityIntStats;     // Humidity from internal sensor
+StatisticCAL pressureExtStats;     // Pressure from external sensor
+StatisticCAL temperatureExtStats;  // Temperature from external sensor
+StatisticCAL humidityExtStats;     // Humidity from external sensor
 StatisticCAL solarStats;           // Solar radiation
+StatisticCAL hauteurNeigeStats;    // Suivi hauteur de neige
 StatisticCAL windSpeedStats;       // Wind speed
 StatisticCAL uStats;               // Wind east-west wind vector component (u)
 StatisticCAL vStats;               // Wind north-south wind vector component (v)
@@ -175,8 +187,9 @@ unsigned int  averageInterval   = 15;     // Number of samples to be averaged in
 unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
 unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
 const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
+
 unsigned int  iridiumTimeout    = 120;    // Timeout for Iridium transmission (seconds)
-unsigned int  gnssTimeout       = 30;     // Timeout for GNSS signal acquisition (seconds)
+unsigned int  gnssTimeout       = 60;     // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 3.0;    // Battery voltage cutoff threshold (V)
 byte          loggingMode       = 3;      // Flag for new log file creation. 1: daily, 2: monthly, 3: yearly
 unsigned int  systemRstWDTCountLimit = 5; // Nombre d'alertes WDT autorisées avant de faire un system Reset (8s par cycle)
@@ -192,27 +205,39 @@ float         batteryCutoff     = 11.0;   // Battery voltage cutoff threshold (V
 byte          loggingMode       = 2;      // Flag for new log file creation. 1: daily, 2: monthly, 3: yearly
 unsigned int  systemRstWDTCountLimit = 15;// Nombre d'alertes WDT autorisées avant de faire un system Reset (8s par cycle)
 #endif
-//TODO If the values above were constants, we could include compile-time checks to make sure they are within range;
-//     However, we'd then lose the ability to modify them remotely, so it's probably not worth it.
+//TODO Verify that these values are within range -- see iridium.ino for acceptable ranges.
 
 // ----------------------------------------------------------------------------
 // Sensors correction factor and offsets -- to modify -- 
 // ----------------------------------------------------------------------------
 //BME280 -- Exterior sensor
-float tempBmeEXT_CF             = 1.00;    // Correction factor for exterior temperature acquisition.
-float tempBmeEXT_Offset         = 0.0;   // Offset for exterior temperature acquisition.
-float humBmeEXT_CF              = 1.00;     // Correction factor for exterior humidity acquisition.
+float tempBmeEXT_CF             = 1.0;      // Correction factor for exterior temperature acquisition.
+float tempBmeEXT_Offset         = 0.0;      // Offset for exterior temperature acquisition.
+float humBmeEXT_CF              = 1.0;      // Correction factor for exterior humidity acquisition.
 float humBmeEXT_Offset          = 0.0;      // Offset for exterior humidity acquisition.
+float presBmeEXT_CF             = 1.0; //TODO: Never used, why?
+float presBmeEXT_Offset         = 0.0; //idem
 
 //BME280 -- Interior sensor
-float tempImeINT_CF             = 1.00;     // Correction factor for interior temperature acquisition.
-float tempBmeINT_Offset         = 0.0;    // Offset for interior temperature acquisition.
+float tempImeINT_CF             = 1.0;      // Correction factor for interior temperature acquisition.
+float tempBmeINT_Offset         = 0.0;      // Offset for interior temperature acquisition.
 float humImeINT_CF              = 1.0;      // Correction factor for interior humidity acquisition.
 float humBmeINT_Offset          = 0.0;      // Offset for interior humidity acquisition.
 
 //VEML7700
-float veml_CF                   = 15.172;   // Correction factor for light intensity acquisition.
-float veml_Offset               = -998;     // Offset for light intensity acquisition.
+float veml_CF                   = 22.045;   // Correction factor for light intensity acquisition. Ref: ÉtalonnageVEML7700_H24.xlsx
+float veml_Offset               = -372.06;  // Offset for light intensity acquisition.
+
+// ----------------------------------------------------------------------------
+// Error codes and values
+// ----------------------------------------------------------------------------
+
+// Cas d'erreurs des valeurs du Stevenson:
+const int16_t temp_ERRORVAL  = -25500;   //temperature
+const int16_t hum_ERRORVAL   = -25500;   //humidite
+const int16_t pres_ERRORVAL  = -2550;    //pression atmospherique
+const uint16_t lux_ERROVAL   = 0;        //Luminosité
+const uint16_t HN_ERRORVAL   = 0xFFFF;   //Hauteur de neige
 
 // ----------------------------------------------------------------------------
 // Global variable declarations
@@ -243,6 +268,7 @@ unsigned int  sampleCounter     = 0;      // Sensor measurement counter
 unsigned int  cutoffCounter     = 0;      // Battery voltage cutoff sleep cycle counter
 unsigned long samplesSaved      = 0;      // Log file sample counter
 long          rtcDrift          = 0;      // RTC drift calculated during sync
+float         pressureInt       = 0.0;    // Internal pressure (hPa)
 float         temperatureInt    = 0.0;    // Internal temperature (°C)
 float         humidityInt       = 0.0;    // Internal hunidity (%)
 float         pressureExt       = 0.0;    // External pressure (hPa)
@@ -251,6 +277,8 @@ float         humidityExt       = 0.0;    // External humidity (%)
 float         pitch             = 0.0;    // Pitch (°)
 float         roll              = 0.0;    // Roll (°)
 float         solar             = 0.0;    // Solar radiation (lx)
+float         hauteurNeige      = 0.0;    // Mesure de la hauteur de neige, en mm
+float         temperatureHN     = 0.0;    // Temperature au moment de la mesure de la hauteur de neige (en C, 1C pres)
 float         windSpeed         = 0.0;    // Wind speed (m/s)
 float         windDirection     = 0.0;    // Wind direction (°)
 float         windGustSpeed     = 0.0;    // Wind gust speed  (m/s)
@@ -261,29 +289,43 @@ float         latitude          = 0.0;    // GNSS latitude (DD)
 float         longitude         = 0.0;    // GNSS longitude (DD)
 byte          satellites        = 0;      // GNSS satellites
 float         hdop              = 0.0;    // GNSS HDOP
-tmElements_t  tm;                         // Variable for converting time elements to time_t
+uint16_t      lastStvsnErrCode  = 0;      // Last status of Stevenson Error Code
 
 // ----------------------------------------------------------------------------
 // Unions/structures
 // ----------------------------------------------------------------------------
 
 // DFRWindSensor (CAL) struc to store/retreive data
-// Attention structure prévue pour la hauteur de neige ET PAS UTILISÉE ICI
-// regMemoryMap[0] = direction vent en degrés (0-360)
-// regMemoryMap[1] = direction vent en secteur (0-15)
-// regMemoryMap[2] = vitesse vent en m/s *10
-// regMemoryMap[3] = hauteur de neige en mm
-// regMemoryMap[4] = temperature de reference pour la mesure hauteur de neige, em Celcius resolution de 1C
-typedef struct { //TODO This would make more sense as a union actually.
-  uint16_t regMemoryMap[5] = {0,0,0,0,0};  //total 5 words = 10 bytes; utile: 3 bytes (2 derniers byte seront pour hauteur de neige, futur)
-  float angleVentFloat = 0;
-  uint16_t directionVentInt = 0;
-  float vitesseVentFloat = 0;
-  float hauteurNeige = 0;  //Futur
-  float temperatureHN = 0; //Futur
-} vent;
+const int regMemoryMapSize = 10;
+union sensorsDataRaw {
+  struct {
+    uint16_t angleVentReg = 0; // direction vent en degrés (0-360)
+    uint16_t dirVentReg   = 0; // direction vent en secteur (0-15)
+    uint16_t vitVentReg   = 0; // vitesse vent en m/s *10
+    uint16_t HNeigeReg    = 0; // hauteur de neige en mm
+    uint16_t tempHNReg    = 0; // temperature de reference pour la mesure hauteur de neige, en Celcius, resolution de 1C
+    uint16_t tempExtReg   = 0; // temperature du BME280 dans le Stevenson
+    uint16_t humExtReg    = 0; // humidite du BME280 dans le Stevenson
+    uint16_t presExtReg   = 0; // pression du BME280 dans le Stevenson
+    uint16_t luminoReg    = 0; // Luminosite du VEML7700 dans le Stevenson
+    uint16_t stvsnErrReg  = 0;
+  } __attribute__((packed));
+  uint16_t regMemoryMap[regMemoryMapSize];
+};
+static_assert(sizeof(sensorsDataRaw) == regMemoryMapSize * sizeof(uint16_t));
 
-const uint8_t ventRegMemMapSize = 0x06;  //6 = 3 capteurs * 2 bytes (instruments de vent seulement)
+struct sensorsData {
+  float angleVentFloat = 0.0;
+  uint16_t directionVentInt = 0;
+  float vitesseVentFloat = 0.0;
+  float hauteurNeige = 0.0;              //V0.6
+  float temperatureHN = 0.0;             //V0.6
+  float temperatureExt = 0.0;            //V0.7
+  float humiditeExt = 0.0;               //V0.7
+  float presAtmospExt = 0.0;             //V0.7
+  float luminoAmbExt = 0.0;              //V0.7
+  uint16_t stvsnErrCode = 0;             //V0.8
+};
 
 // Union to store Iridium Short Burst Data (SBD) Mobile Originated (MO) messages
 typedef union
@@ -306,7 +348,7 @@ typedef union
     int32_t   latitude;           // Latitude (DD)                  (4 bytes)   * 1000000
     int32_t   longitude;          // Longitude (DD)                 (4 bytes)   * 1000000
     uint8_t   satellites;         // # of satellites                (1 byte)
-    uint16_t  hdop;               // HDOP                           (2 bytes)
+    uint16_t  hauteurNeige;       // Hauteur de neige (mm)          (2 bytes)   * 1
     uint16_t  voltage;            // Battery voltage (V)            (2 bytes)   * 100
     uint16_t  transmitDuration;   // Previous transmission duration (2 bytes)
     uint8_t   transmitStatus;     // Iridium return code            (1 byte)
@@ -343,16 +385,16 @@ SBD_MT_MESSAGE mtSbdMessage;
 //       Sensors set to `0` will be initialized automatically when needed.
 struct struct_online
 {
-  bool bme280Ext = 0;
+  bool bme280Ext = 1; // Derrière le bridge RS-485
   bool bme280Int = 0;
   bool lsm303   = 0;
-  bool veml7700 = 0;
+  bool veml7700 = 1; // Derrière le bridge RS-485
   bool hmp60    = 1; //TODO Retirer
   bool sht31    = 1; //TODO Retirer
   bool wm5103L  = 1; //TODO Retirer
   bool di7911   = 1; //TODO Retirer
   bool sp212    = 1; //TODO Retirer
-  bool dfrws    = 0;
+  bool dfrws    = 0; // Est le bridge RS-485 (TODO: Renommer)
   bool gnss     = 0;
   bool iridium  = 0;
   bool microSd  = 0;
@@ -445,7 +487,7 @@ void setup()
     readVeml7700();    // Read solar radiation
     DEBUG_PRINT(">  (VEML7700) Fram state: "); DEBUG_PRINTLN(freeRam());
 
-    readDFRWindSensor();
+    readDFRWindSensor(); //TODO Rename me
     DEBUG_PRINT(">  (DFRWS) Fram state: "); DEBUG_PRINTLN(freeRam());
 
     //readGnss(); // Sync RTC with the GNSS
@@ -508,7 +550,7 @@ void loop()
       printWakeUp(sampleCounter);
 
       // Print date and time
-      DEBUG_PRINT("Info - Alarm triggered at "); printDateTime();
+      DEBUG_PRINT("Info - Alarm triggered at "); DEBUG_PRINTLN(datetime);
     }
 
     // Read battery voltage
@@ -523,8 +565,7 @@ void loop()
       // system after 1 week
       if (cutoffCounter > 7 * 24 * (60/sampleInterval))
       {
-        // Force WDT reset
-        while (1);
+        forceReset(); // Force WDT reset
       }
 
       DEBUG_PRINTLN("Warning - Battery voltage cutoff exceeded. Entering deep sleep...");
@@ -596,9 +637,11 @@ void loop()
             readGnss(); // Sync RTC with the GNSS
             currentDate = newDate;
           }
+
           transmitData(); // Transmit data via Iridium transceiver
           printSettings(); // Print current settings (in case they changed)
         }
+
         sampleCounter = 0; // Reset sample counter
       }
 
@@ -629,7 +672,7 @@ void loop()
     if (checkAlarm())
     {
       // Blink LED to indicate WDT interrupt and nominal system operation
-      blinkLed(PIN_LED_GREEN, 1, 25);
+      blinkLed(PIN_LED_GREEN, 1, 50);
 
       // Reset the WDT
       petDog();
@@ -640,7 +683,7 @@ void loop()
       blinkLed(PIN_LED_RED, 1, 250);
 
       // Reset the RTC alarm based on current time
-      setCutoffAlarm();
+      setCutoffAlarm(); //TODO Clarify what cutOffAlarm should really do
     }
   }
 

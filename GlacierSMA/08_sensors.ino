@@ -1,22 +1,28 @@
 // ----------------------------------------------------------------------------
-// Utility function to detect I2C sensor lockup 
+// Utility function to detect I2C sensor lockup.
+// @param recheck Number of "double-checks" that the sensor is truly online (in case of false positives).
+// @param retry Number of "re-attempts" to communicate with the sensor (default is 3).
+// @param delay Initial delay (ms) before re-attempting to communicate; Doubles with every failure.
 // ----------------------------------------------------------------------------
-bool scanI2CbusFor(uint8_t address, uint8_t recheck = 0) {
+bool scanI2CbusFor(uint8_t address, unsigned int recheck = 0, unsigned int retry = 3, unsigned long delay = 10) {
   Wire.beginTransmission(address);
-  uint8_t error = Wire.endTransmission();
+  uint8_t error = Wire.endTransmission(); // The I2C device replied normally if error == 0
 
-  while (error == 0 && recheck--) { // I2C device replied
-    //FIXME This sometimes returns false positives, so let's check again just in case...
-    myDelay(10);
+  while ((error == 0 && recheck-- > 0) || (error != 0 && retry-- > 0)) { 
+    myDelay(delay);
     Wire.beginTransmission(address);
-    error = Wire.endTransmission();
+    if (error = Wire.endTransmission()) {
+      DEBUG_PRINT("[Error "); DEBUG_PRINT(error); DEBUG_PRINT("] ");
+      delay *= 2; // Progressively increase the delay in case of failed transmissions.
+    }
   }
 
-  if (error == 0) { // I2C device replied every time
-    DEBUG_PRINT("Sensor found at address 0x");
+  if (error == 0) { // I2C device replied succesfully
+    DEBUG_PRINT("[Sensor found at address 0x");
     if (address < 16)
       DEBUG_PRINT(0);
-    DEBUG_PRINTLN_HEX(address);
+    DEBUG_PRINT_HEX(address);
+    DEBUG_PRINT("] ");
     return true;
   }
 
@@ -24,7 +30,7 @@ bool scanI2CbusFor(uint8_t address, uint8_t recheck = 0) {
 }
 
 // ----------------------------------------------------------------------------
-// Adafruit BME280 Temperature Humidity Pressure Sensor -- Adressage par défaut pour le BME280 externe Adr = 0x77
+// Adafruit BME280 Temperature Humidity Pressure Sensor -- Adressage par défaut pour le BME280 externe (adr = 0x77)
 // Pression non-ajouté
 // https://www.adafruit.com/product/2652
 // ----------------------------------------------------------------------------
@@ -32,7 +38,7 @@ void configureBme280Ext()
 {
   DEBUG_PRINT("Info - Initializing BME280 Ext... ");
 
-  if (scanI2CbusFor(BME280_ADDRESS) && bme280Ext.begin(BME280_ADDRESS))
+  if (scanI2CbusFor(BME280_EXT_ADDR) && bme280Ext.begin(BME280_EXT_ADDR))
   {
     online.bme280Ext = true;
     DEBUG_PRINTLN("success!");
@@ -88,14 +94,14 @@ void readBme280Ext()
 }
 
 // ----------------------------------------------------------------------------
-// Adafruit BME280 Temperature Humidity Pressure Sensor -- Second adressage pour le BME280 interne adr = 0x76
+// Adafruit BME280 Temperature Humidity Pressure Sensor -- Second adressage pour le BME280 interne (adr = 0x76)
 // https://www.adafruit.com/product/2652
 // ----------------------------------------------------------------------------
 void configureBme280Int()
 {
   DEBUG_PRINT("Info - Initializing BME280 Int... ");
 
-  if (scanI2CbusFor(BME280_ADDRESS_ALTERNATE) && bme280Int.begin(BME280_ADDRESS_ALTERNATE))
+  if (scanI2CbusFor(BME280_INT_ADDR) && bme280Int.begin(BME280_INT_ADDR))
   {
     online.bme280Int = true;
     DEBUG_PRINTLN("success!");
@@ -126,7 +132,7 @@ void readBme280Int()
     // Read sensor data
     temperatureInt = tempImeINT_CF * bme280Int.readTemperature() + tempBmeINT_Offset ;
     humidityInt = min(humImeINT_CF * bme280Int.readHumidity() + humBmeINT_Offset, 100);
-    //pressureInt = bme280Int.readPressure() / 100.0F;
+    pressureInt = bme280Int.readPressure() / 100.0F;
 
     // Add to statistics object
     temperatureIntStats.add(temperatureInt);
@@ -136,7 +142,7 @@ void readBme280Int()
     #if CALIBRATE
       DEBUG_PRINT("\tTemperatureInt: "); DEBUG_PRINT(temperatureInt); DEBUG_PRINTLN(" C");
       DEBUG_PRINT("\tHumidityInt: "); DEBUG_PRINT(humidityInt); DEBUG_PRINTLN("%");
-      //DEBUG_PRINT("\tPressureInt: "); DEBUG_PRINT(pressureInt); DEBUG_PRINTLN(" hPa");
+      DEBUG_PRINT("\tPressureInt: "); DEBUG_PRINT(pressureInt); DEBUG_PRINTLN(" hPa");
     #endif
 
     DEBUG_PRINTLN("done.");
@@ -153,12 +159,10 @@ void readBme280Int()
 // ----------------------------------------------------------------------------
 // Adafruit VEML7700 Lux Meter -- Basé sur le BME280
 // ----------------------------------------------------------------------------
-#define vemlI2cAddr 0x10
-
 Adafruit_VEML7700* configureVEML7700() {
   DEBUG_PRINT("Info - Initializing VEML7700... ");
 
-  if (scanI2CbusFor(vemlI2cAddr, 3)) {
+  if (scanI2CbusFor(VEML_ADDR, 3)) {
     // Constructed here because the destructor hangs if the sensor is not connected.
     Adafruit_VEML7700* veml = new Adafruit_VEML7700();
 
@@ -603,59 +607,67 @@ void read7911()
 // DFRobot WindSensor comprises the following 2:
 //    RS485 Wind Speed Transmitter (SEN0483) : https://wiki.dfrobot.com/RS485_Wind_Speed_Transmitter_SKU_SEN0483
 //    RS485 Wind Direction Transmitter (SEN0482) : https://wiki.dfrobot.com/RS485_Wind_Direction_Transmitter_SKU_SEN0482
-//Slave ragisters map (read-only):
-  /*
-  0x00  MSB Angle Vent
-  0x01  LSB Angle Vent
-  0x02  MSB Direction Vent
-  0x03  LSB Direction Vent
-  0x04  MSB Vitesse Vent
-  0x05  MSB Vitesse Vent
+/* Slave registers mapping (read-only):
+  0x00 (16 bits) Angle Vent
+  0x01 (16 bits) Direction Vent
+  0x02 (16 bits) Vitesse Vent
+  0x03 (16 bits) Hauteur de neige (mm)
+  0x04 (16 bits) Temperature HN (C)
+  0x05 (16 bits) Temperature BME280
+  0x06 (16 bits) Humidite BME280
+  0x07 (16 bits) Pression atmosph BME280
+  0x08 (16 bits) Luminosite VEML7700
+  0x09 (16 bits) Code d'erreur (only the lower 8 bits are used)
+  NB: all words are sent in little-endian
   
-  * DFRobot wind direction sensor informations :
-  *
-  * Direction	      16 Directions Value   Angle(360°)
-  * North	                0	              0° - 11.2°
-  * North-northeast	      1	              11.3° - 33.7°
-  * Northeast	            2	              33.8° - 56.2°
-  * East-northeast	      3	              56.3° - 78.7°
-  * East	                4	              78.8° - 101.2°
-  * East-southeast	      5	              101.3° - 123.7°
-  * Southeast	            6	              123.8° - 146.2°
-  * South-southeast	      7	              146.3° - 168.7°
-  * South	                8	              168.8° - 191.2°
-  * South-southwest	      9	              191.3° - 213.7°
-  * Southwest	            10	            213.8° - 236.2°
-  * West-southwest	      11	            236.3° - 258.7°
-  * West	                12	            258.8° - 281.2°
-  * West-northwest	      13	            281.3° - 303.7°
-  * Northwest	            14	            303.8° - 326.2°
-  * North-northwest	      15	            326.3° - 348.7°
-  * North	                16	            348.8° - 360°
- */
+  * DFRobot wind direction sensor encoding table:
+  * Direction            Encoding        Angle(360°)
+  * North                0            0° - 11.2°
+  * North-northeast      1            11.3° - 33.7°
+  * Northeast            2            33.8° - 56.2°
+  * East-northeast       3            56.3° - 78.7°
+  * East                 4            78.8° - 101.2°
+  * East-southeast       5            101.3° - 123.7°
+  * Southeast            6            123.8° - 146.2°
+  * South-southeast      7            146.3° - 168.7°
+  * South                8            168.8° - 191.2°
+  * South-southwest      9            191.3° - 213.7°
+  * Southwest            10           213.8° - 236.2°
+  * West-southwest       11           236.3° - 258.7°
+  * West                 12           258.8° - 281.2°
+  * West-northwest       13           281.3° - 303.7°
+  * Northwest            14           303.8° - 326.2°
+  * North-northwest      15           326.3° - 348.7°
+  * North                16           348.8° - 360°       //FIXME Wait, why is north there twice?
+*/
 // ----------------------------------------------------------------------------
+const uint16_t bridgeSettleDelay = 15000; // 15 secondes! oui... pas encore optimisé - Yh - 26 avril 2024
+const uint16_t valeurLimiteHauteurNeige = 4000; // Max acceptable pour la valeur de mesure hauteur de neige
+const float facteurMultLumino = 3800.0; // Facteur d'échelonnage lors de la conversion à un 16bits (encodage) pour mettre dans le registre
+
 void readDFRWindSensor() 
 {
   // Start the loop timer
   unsigned long loopStartTime = millis();
 
   DEBUG_PRINT("Info - Reading DFRWindSensor... ");
-  myDelay(2000); //Let the DFRWindSensor settle a bit... making sure data is accurate at the sensor and ready for us.
 
-  if (!scanI2CbusFor(WIND_SENSOR_SLAVE_ADDR, 3)) {
+  if (!scanI2CbusFor(BRIDGE_SENSOR_SLAVE_ADDR, 1)) {
     DEBUG_PRINTLN("failed!");
     online.dfrws = false;
     timer.readDFRWS += millis() - loopStartTime; // Update the loop timer anyway
     return;
   }
 
-  // Requires I2C bus
-  Wire.begin();
-  myDelay(1000);
+  // Il faut laisser du temps au bridgeI2C de collecter les donnees sur le modbus RS485, tout en laissant les capteurs faire leur travail.
+  DEBUG_PRINT("(sensor settle time: "); DEBUG_PRINT(bridgeSettleDelay/1000); DEBUG_PRINT("s) ");
+  Wire.begin(); // Requires I2C bus
+  myDelay(bridgeSettleDelay);
   
-  vent lectureVent;  //Let's use a structure to read wind sensor.
+  sensorsDataRaw bridgeDataRaw; // Struct for raw sensor data (read from i2c)
+  sensorsData bridgeData; // Struct for parsed sensor data
 
-  byte len = Wire.requestFrom(WIND_SENSOR_SLAVE_ADDR, ventRegMemMapSize);  //Requesting 6 bytes from slave
+  byte len = Wire.requestFrom(BRIDGE_SENSOR_SLAVE_ADDR, sizeof(sensorsDataRaw));  // Requesting _ bytes from slave
   if (len == 0) {
     DEBUG_PRINTLN("failed!");
     online.dfrws = false;
@@ -668,25 +680,175 @@ void readDFRWindSensor()
     for (int i = 0; i < len/2 && Wire.available() >= 2; i++) { //TODO I'm 99% sure the Wire.available() is redundant but I'll confirm later.
       uint8_t LSB = Wire.read();
       uint8_t MSB = Wire.read();
-      lectureVent.regMemoryMap[i] = (MSB<<8)+LSB;
+      bridgeDataRaw.regMemoryMap[i] = (MSB<<8)+LSB;
     }
 
-    lectureVent.angleVentFloat = lectureVent.regMemoryMap[0]/10.0;
-    lectureVent.directionVentInt = lectureVent.regMemoryMap[1];
-    lectureVent.vitesseVentFloat = lectureVent.regMemoryMap[2]/10.0;
-
-    windSpeed = lectureVent.vitesseVentFloat;
-    if (windSpeed > 0) {
-      // Update wind direction only if wind was detected.
-      windDirection = lectureVent.angleVentFloat;
-      windDirectionSector = lectureVent.directionVentInt;
+    DEBUG_PRINTLN();
+    DEBUG_PRINTF("\t*RAW* readings: ");
+    for (int i = 0; i < regMemoryMapSize; i++) {
+      DEBUG_PRINT(' '); DEBUG_PRINT(bridgeDataRaw.regMemoryMap[i]);
     }
-  }
+    DEBUG_PRINTLN();
 
-  // Check and update wind gust speed and direction
-  if (windSpeed > windGustSpeed) {
-    windGustSpeed = windSpeed;
-    windGustDirection = windDirection;
+    //--- Grande section de la récupération des valeurs et validation des codes d'erreurs --------------------------
+
+    { // VITESSE ET DIRECTION DU VENT
+      //Traitement direction des vents - angle - Application du décodage:
+      bridgeData.angleVentFloat = bridgeDataRaw.angleVentReg / 10.0;
+      //Traitement direction des vents - secteur
+      bridgeData.directionVentInt = bridgeDataRaw.dirVentReg;
+      //Traitement vitesse des vents - Application du décodage:
+      bridgeData.vitesseVentFloat = bridgeDataRaw.vitVentReg / 10.0;
+
+      windSpeed = bridgeData.vitesseVentFloat;
+      if (windSpeed > 0) {
+        // Update wind direction only if wind was detected.
+        windDirection = bridgeData.angleVentFloat;
+        windDirectionSector = bridgeData.directionVentInt;
+
+        // Check and update wind gust speed and direction.
+        if (windSpeed > windGustSpeed) {
+          windGustSpeed = windSpeed;
+          windGustDirection = windDirection;
+        }
+      }
+    }
+
+    { // HAUTEUR DE NEIGE
+      //Traitement hauteur de neige et température capteur HN:
+      if (bridgeDataRaw.HNeigeReg == HN_ERRORVAL) {
+        DEBUG_PRINTFLN("\thauteurNeige: Invalid data");
+        hauteurNeige = 0.0;
+        temperatureHN = 0.0;
+      }
+      else {
+        bridgeData.hauteurNeige = (float)bridgeDataRaw.HNeigeReg;
+        bridgeData.temperatureHN = (float)bridgeDataRaw.tempHNReg;   //Yh 4-fev-2025: à revoir car ne sera pas bien interprété
+        
+        #if CALIBRATE
+          DEBUG_PRINTF("\thauteurNeige Raw: "); DEBUG_PRINT(bridgeData.hauteurNeige); DEBUG_PRINTFLN(" mm");
+        #endif
+
+        //Yh 18Déc2023: TODO
+        //Traitement nécessaire si la temperatureHN est trop différente de la température du BME280 EXT (si disponible) ET que la hauteurNeige est disponible (pas 0 ou négatif)
+        //Pour l'instant on y va directement:
+        if (bridgeData.hauteurNeige < valeurLimiteHauteurNeige) {  //Limite de la lecture: 4000mm = 4m sinon pas valide pcq pas fiable
+          hauteurNeige = bridgeData.hauteurNeige;
+          temperatureHN = bridgeData.temperatureHN;
+          hauteurNeigeStats.add(hauteurNeige);
+        } else {
+          hauteurNeige = 0.0;
+          temperatureHN = 0.0;
+        }
+
+        #if CALIBRATE
+          DEBUG_PRINTF("\tHauteurNeige: "); DEBUG_PRINT(hauteurNeige); DEBUG_PRINTFLN(" mm");
+        #endif
+      }
+    }
+
+    { // TPH (BME280 EXT)
+      //Traitement data Stevenson - température (BME280):
+      if ((int16_t)bridgeDataRaw.tempExtReg != temp_ERRORVAL) {
+        //Application du décodage:
+        bridgeData.temperatureExt = (int16_t)bridgeDataRaw.tempExtReg / 100.0;
+
+        //Application de la correction selon étalonnage
+        bridgeData.temperatureExt  = tempBmeEXT_CF * bridgeData.temperatureExt + tempBmeEXT_Offset;
+
+        if (bridgeData.temperatureExt > -40.0 && bridgeData.temperatureExt < 50.0) {
+          temperatureExt = bridgeData.temperatureExt;  // External temperature (°C)
+
+          // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
+
+          temperatureExtStats.add(temperatureExt);
+
+          #if CALIBRATE
+              DEBUG_PRINTF("\tTemperatureExt: "); DEBUG_PRINT(bridgeData.temperatureExt); DEBUG_PRINTFLN(" C");
+          #endif
+        } // else: la valeur est "rejetée"
+      }
+      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+
+      //Traitement data Stevenson - humidité (BME280):
+      if ((int16_t)bridgeDataRaw.humExtReg != hum_ERRORVAL) {
+        //Application du décodage:
+        bridgeData.humiditeExt = bridgeDataRaw.humExtReg / 100.0;
+
+        //Application de la correction selon étalonnage
+        float humExt = humBmeEXT_CF * bridgeData.humiditeExt + humBmeEXT_Offset;
+
+        // Protection en cas de mauvaise valeur après étalonnage
+        if (humExt >= 100) {
+          humidityExt = 100.0;
+        } else {
+          humidityExt = humExt;
+        }
+
+        humidityExtStats.add(humidityExt);
+
+        #if CALIBRATE
+            DEBUG_PRINTF("\tHumidityExt: "); DEBUG_PRINT(bridgeData.humiditeExt); DEBUG_PRINTFLN("%");
+        #endif
+      }
+      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+
+      //Traitement data Stevenson - pression atmoshpérique (BME280):
+      if ((int16_t)bridgeDataRaw.presExtReg != pres_ERRORVAL) {
+
+        //Application du décodage:
+        bridgeData.presAtmospExt = bridgeDataRaw.presExtReg / 10.0;  //On veut en hPa
+
+        //Application de la correction selon étalonnage  
+        pressureExt = presBmeEXT_CF * bridgeData.presAtmospExt + presBmeEXT_Offset;
+
+        // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
+
+        pressureExtStats.add(pressureExt);
+
+        #if CALIBRATE
+            DEBUG_PRINTF("\tPressureExt: "); DEBUG_PRINT(bridgeData.presAtmospExt); DEBUG_PRINTFLN(" hPa");
+        #endif
+      }  
+      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+    }
+
+    { // LUMINOSITE (VEML7700)
+      //Traitement data Stevenson - luminosité (VEML7700):
+      // Lumino: en cas d'erreur, la valeur recue sera 0 //FIXME This could use an error value for extra clarity.
+
+      //Application du décodage:
+      if (bridgeDataRaw.luminoReg > 0) {
+        float tempLum = bridgeDataRaw.luminoReg / facteurMultLumino;
+        bridgeData.luminoAmbExt = pow(10, tempLum); //TODO This means the smallest possible value is 10 lux; why not support negatives?
+      } else bridgeData.luminoAmbExt = 0.0;
+
+      //Application de la correction selon étalonnage
+      solar = veml_CF * bridgeData.luminoAmbExt + veml_Offset;
+
+      // Protection en cas de mauvaise valeur après étalonnage
+      if (solar > 0 && solar < 188000) {
+        solarStats.add(solar);   // Add acquisition        
+      } else solar = 0.0;
+
+      // Ex en date du 2 mai 2024: 
+      #if CALIBRATE
+          DEBUG_PRINTF(">\tluminosite: raw="); DEBUG_PRINT(bridgeDataRaw.luminoReg);
+          DEBUG_PRINTF(" luminoAmbExt="); DEBUG_PRINT(bridgeData.luminoAmbExt);
+          DEBUG_PRINTF(" solar="); DEBUG_PRINT(solar);
+          DEBUG_PRINTF(" solarStats="); DEBUG_PRINT(solarStats.average());
+          DEBUG_PRINTLN();
+      #endif
+    }
+
+    //Recupération de l'information d'état de lecture par le périphérique:
+    bridgeData.stvsnErrCode = (uint16_t)bridgeDataRaw.stvsnErrReg;
+    lastStvsnErrCode = bridgeData.stvsnErrCode || lastStvsnErrCode; // Yh 14nov24: fait un OR pour conserver entre 2 collectes, jusqu'à ce que l'envoie soit fait. Pas parfait, mais on aura l'info que pendant le cycle on a rencontré une erreur.
+    if (bridgeData.stvsnErrCode) { DEBUG_PRINTF("*ATTN* "); }
+    DEBUG_PRINTF("\tstvsnErrCode: ");
+    DEBUG_PRINTLN(bridgeData.stvsnErrCode);
+
+    //--- Fin de la grande section de la récupération des valeurs et validation des codes d'erreurs --------------------------
   }
 
   // Calculate wind speed and direction vectors
@@ -703,13 +865,15 @@ void readDFRWindSensor()
   DEBUG_PRINTLN("done.");
 
   // Print debug info:
-  char smallMsg[48]={0};  //Temps buffer
-  sprintf(smallMsg,"%x %x %x",lectureVent.regMemoryMap[0],lectureVent.regMemoryMap[1],lectureVent.regMemoryMap[2]);
-
-  DEBUG_PRINT(F("\t*RAW* readings: ")); DEBUG_PRINTLN(smallMsg);
-  DEBUG_PRINT(F("\tWind Speed: ")); DEBUG_PRINTLN(windSpeed);
-  DEBUG_PRINT(F("\tWind Direction: ")); DEBUG_PRINTLN(windDirection);
-  DEBUG_PRINT(F("\tWind Dir. Sector: ")); DEBUG_PRINTLN(windDirectionSector);
+  DEBUG_PRINTF("\tWind Speed: "); DEBUG_PRINTLN(windSpeed);
+  DEBUG_PRINTF("\tWind Direction: "); DEBUG_PRINTLN(windDirection);
+  DEBUG_PRINTF("\tWind Dir. Sector: "); DEBUG_PRINTLN(windDirectionSector);
+  DEBUG_PRINTF("\tHauteurNeige: "); DEBUG_PRINTLN(hauteurNeige);
+  DEBUG_PRINTF("\tTemp. HauteurNeige: "); DEBUG_PRINTLN(temperatureHN);
+  DEBUG_PRINTF("\tTemperatureExt: "); DEBUG_PRINTLN(temperatureExt);
+  DEBUG_PRINTF("\tHumidityExt: "); DEBUG_PRINTLN(humidityExt);
+  DEBUG_PRINTF("\tPressureExt: "); DEBUG_PRINTLN(pressureExt);
+  DEBUG_PRINTF("\tluminoAmbExt: "); DEBUG_PRINTLN(solar);
 
   // Stop the loop timer
   timer.readDFRWS += millis() - loopStartTime;
@@ -748,7 +912,7 @@ void windVectors()
   // Zero wind direction if wind speed is zero
   // Note: atan2 can be undefined if u and v vectors are zero
   if (rvWindSpeed == 0)
-    rvWindDirection = 0;
+    rvWindDirection = 0; //FIXME: This resets the wind direction to 0 instead of keeping the previous value
   else if (rvWindDirection < 0) // Todo: Check if necessary
     rvWindDirection += 360;
 

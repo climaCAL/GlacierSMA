@@ -54,7 +54,7 @@ void transmitData()
   pinPeripheral(PIN_IRIDIUM_RX, PIO_SERCOM);
 
   // Wake up the RockBLOCK 9603 and begin communications
-  DEBUG_PRINTLN("Info - Starting iridium modem...");
+  DEBUG_PRINT("Info - Starting iridium modem ("); DEBUG_PRINT(iridiumTimeout/2); DEBUG_PRINTLN("s)...");
   petDog(); // The following might take a while, so best reset the WDT here
 
   int returnCode = modem.begin();
@@ -78,7 +78,7 @@ void transmitData()
     mtSbdBufferSize = sizeof(mtSbdBuffer);
     memset(mtSbdBuffer, 0x00, sizeof(mtSbdBuffer)); // Clear MT-SBD buffer
 
-    DEBUG_PRINTLN("Info - Attempting to transmit message...");
+    DEBUG_PRINT("Info - Attempting to transmit message ("); DEBUG_PRINT(iridiumTimeout); DEBUG_PRINTLN("s)...");
     petDog(); // The following might take a while, so best reset the WDT here
 
     // Transmit and receive SBD message data in binary format
@@ -106,55 +106,64 @@ void transmitData()
         // Check if MT-SBD message is the correct size
         if (mtSbdBufferSize == 7) //FIXME: This should be sizeof(mtSbdMessage)
         {
-          DEBUG_PRINTLN("Info - MT-SBD message correct size.");
 
-          // Write incoming MT-SBD message to union/structure
-          for (int i = 0; i < mtSbdBufferSize; ++i)
-          {
-            mtSbdMessage.bytes[i] = mtSbdBuffer[i];
-          }
-
-          // Print MT-SBD message
+          DEBUG_PRINT("Info - MT-SBD message received. Size: ");
+          DEBUG_PRINT(mtSbdBufferSize); DEBUG_PRINTLN(" bytes.");
           printMtSbdBuffer(); // Print MT-SBD message in hexadecimal
-          printMtSbd(); // Print MT-SBD message stored in union/structure
 
-          // Check if MT-SBD message data is valid and update variables
-          if ((mtSbdMessage.sampleInterval    >= 1  &&  mtSbdMessage.sampleInterval   <= 60)  &&
-              (mtSbdMessage.averageInterval   >= 1  &&  mtSbdMessage.averageInterval  <= 24)  &&
-              (mtSbdMessage.transmitInterval  >= 1  &&  mtSbdMessage.transmitInterval <= 24)  &&
-              (mtSbdMessage.transmitLimit     >= 1  &&  mtSbdMessage.transmitLimit    <= 24)  &&
-              (mtSbdMessage.batteryCutoff     >= 0  &&  mtSbdMessage.batteryCutoff    <= 12)  &&
-              (mtSbdMessage.resetFlag         == 0  ||  mtSbdMessage.resetFlag        == 255))
+          // Check if MT-SBD message is the correct size
+          if (mtSbdBufferSize >= sizeof(mtSbdMessage))
           {
-            DEBUG_PRINTLN("Info - All received values within accepted ranges.");
+            DEBUG_PRINTLN("Info - MT-SBD message correct size.");
 
-            sampleInterval    = mtSbdMessage.sampleInterval;    // Update alarm interval
-            averageInterval   = mtSbdMessage.averageInterval;   // Update sample average interval
-            transmitInterval  = mtSbdMessage.transmitInterval;  // Update transmit interval
-            transmitLimit     = mtSbdMessage.transmitLimit;     // Update transmit limit
-            batteryCutoff     = mtSbdMessage.batteryCutoff;     // Update battery cutoff voltage
-            resetFlag         = mtSbdMessage.resetFlag;         // Update force reset flag
+            // Write incoming MT-SBD message to union/structure
+            memcpy(mtSbdMessage.bytes, mtSbdBuffer, sizeof(mtSbdMessage));
+
+            // Print MT-SBD message
+            printMtSbd(); // Print MT-SBD message stored in union/structure
+
+            // Check if MT-SBD message data is valid and update variables
+            if ((mtSbdMessage.sampleInterval    >= 1  &&  mtSbdMessage.sampleInterval   <= 60)  &&
+                (mtSbdMessage.averageInterval   >= 1  &&  mtSbdMessage.averageInterval  <= 240)  &&
+                (mtSbdMessage.transmitInterval  >= 1  &&  mtSbdMessage.transmitInterval <= 24)  &&
+                (mtSbdMessage.retransmitLimit   >= 0  &&  mtSbdMessage.retransmitLimit  <= 5)  &&
+                (mtSbdMessage.batteryCutoff     >= 0  &&  mtSbdMessage.batteryCutoff    <= 12)  &&
+                (mtSbdMessage.resetFlag         == 0  ||  mtSbdMessage.resetFlag        == 255))
+            {
+              DEBUG_PRINTLN("Info - All received values within accepted ranges.");
+
+              sampleInterval    = mtSbdMessage.sampleInterval;    // Update alarm interval
+              averageInterval   = mtSbdMessage.averageInterval;   // Update sample average interval
+              transmitInterval  = mtSbdMessage.transmitInterval;  // Update transmit interval
+              retransmitLimit   = mtSbdMessage.retransmitLimit;   // Update retransmit limit
+              batteryCutoff     = mtSbdMessage.batteryCutoff;     // Update battery cutoff voltage
+              resetFlag         = mtSbdMessage.resetFlag;         // Update force reset flag
+            }
+            else
+            {
+              DEBUG_PRINTLN("Warning - Received values exceed accepted range!");
+            }
           }
           else
           {
-            DEBUG_PRINTLN("Warning - Received values exceed accepted range!");
+            DEBUG_PRINTLN("Warning - MT-SBD message incorrect size!");
           }
         }
         else
         {
-          DEBUG_PRINTLN("Warning - MT-SBD message incorrect size!");
+          DEBUG_PRINT("Warning - Transmission failed with error code "); DEBUG_PRINTLN(returnCode);
+          blinkLed(PIN_LED_RED, 10, 500);
         }
       }
+      else
+      {
+        DEBUG_PRINT("Warning - Transmission failed with error code ");
+        DEBUG_PRINTLN(returnCode);
+        blinkLed(PIN_LED_RED, 10, 500);
+      }
     }
-    else
-    {
-      DEBUG_PRINT("Warning - Transmission failed with error code ");
-      DEBUG_PRINTLN(returnCode);
-      blinkLed(PIN_LED_RED, 10, 500);
-    }
-  }
 
-  petDog();
+    petDog();
 
   // Store return status code
   transmitStatus = returnCode;
@@ -203,7 +212,7 @@ void transmitData()
   {
     DEBUG_PRINTLN("Info - Forced system reset...");
     digitalWrite(PIN_LED_RED, HIGH); // Turn on LED
-    while (true); // Wait for Watchdog Timer to reset system
+    forceReset();
   }
 }
 
@@ -220,18 +229,16 @@ bool ISBDCallback()
   return true;
 }
 
+#if DEBUG_IRIDIUM
 // Callback to sniff the conversation with the Iridium modem
 void ISBDConsoleCallback(IridiumSBD *device, char c)
 {
-#if DEBUG_IRIDIUM
   DEBUG_WRITE(c);
-#endif
 }
 
 // Callback to to monitor Iridium modem library's run state
 void ISBDDiagsCallback(IridiumSBD *device, char c)
 {
-#if DEBUG_IRIDIUM
   DEBUG_WRITE(c);
-#endif
 }
+#endif
