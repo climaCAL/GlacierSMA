@@ -37,6 +37,7 @@
 #include <Adafruit_Sensor.h>        // https://github.com/adafruit/Adafruit_Sensor (v1.1.4)
 #include <Arduino.h>                // Required for new Serial instance. Include before <wiring_private.h>
 #include <ArduinoLowPower.h>        // https://github.com/arduino-libraries/ArduinoLowPower (v1.2.2)
+#include <CircularBuffer.hpp>       // https://github.com/rlogiacco/CircularBuffer (v1.4.0)
 #include <IridiumSBD.h>             // https://github.com/sparkfun/SparkFun_IridiumSBD_I2C_Arduino_Library (v3.0.6)
 #include <RTCZero.h>                // https://github.com/arduino-libraries/RTCZero (v1.6.0)
 #include <SdFat.h>                  // https://github.com/greiman/SdFat (v2.1.2)
@@ -181,10 +182,12 @@ StatisticCAL vStats;               // Wind north-south wind vector component (v)
 // User defined configuration variables
 // ----------------------------------------------------------------------------
 #if DEBUG
-unsigned int  sampleInterval    = 1;      // Sampling interval (minutes). Values must be in range [1, 60]
-unsigned int  averageInterval   = 15;     // Number of samples to be averaged in each message. Range: [1, 240]
-unsigned int  transmitInterval  = 1;      // Number of messages in each Iridium transmission (340-byte limit)
-unsigned int  retransmitLimit   = 5;      // Failed data transmission reattempts (340-byte limit)
+unsigned int  sampleInterval    = 1;      // Sampling interval (minutes). Default: 5 min (300 seconds)
+unsigned int  averageInterval   = 15;     // Number of samples to be averaged in each message. Default: 12 (hourly)
+unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
+unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
+const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
+
 unsigned int  iridiumTimeout    = 120;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 60;     // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 3.0;    // Battery voltage cutoff threshold (V)
@@ -193,8 +196,9 @@ unsigned int  systemRstWDTCountLimit = 5; // Nombre d'alertes WDT autorisées av
 #else
 unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
 unsigned int  averageInterval   = 12;     // Number of samples to be averaged in each message. Default: 12 (hourly)
-unsigned int  transmitInterval  = 1;      // Number of messages in each Iridium transmission (340-byte limit)
-unsigned int  retransmitLimit   = 5;      // Failed data transmission reattempts (340-byte limit)
+unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
+unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
+const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
 unsigned int  iridiumTimeout    = 240;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 120;    // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 11.0;   // Battery voltage cutoff threshold (V)
@@ -246,18 +250,17 @@ bool          firstTimeFlag     = true;   // Flag to determine if program is run
 bool          resetFlag         = false;  // Flag to force system reset using Watchdog Timer
 uint8_t       moSbdBuffer[340];           // Buffer for Mobile Originated SBD (MO-SBD) message (340 bytes max)
 uint8_t       mtSbdBuffer[270];           // Buffer for Mobile Terminated SBD (MT-SBD) message (270 bytes max)
-size_t        moSbdBufferSize;
-size_t        mtSbdBufferSize;
+size_t        moSbdBufferSize   = 0;
+size_t        mtSbdBufferSize   = 0;
 char          logFileName[50]   = "";     // Log file name
-char          datetime[20]      = "";     // Datetime buffer
-byte          retransmitCounter = 0;      // Counter for Iridium 9603 transmission reattempts
-byte          transmitCounter   = 0;      // Counter for Iridium 9603 transmission intervals
+char          dateTime[20]      = "";     // Datetime buffer
 byte          currentLogFile    = 0;      // Variable for tracking when new microSD log files are created
 byte          currentDate       = 0;      // Variable for tracking when the date changes
 byte          newDate           = 0;      // Variable for tracking when the date changes
+byte          transmitCounter   = 0;      // Counter for Iridium 9603 transmission intervals
 int           transmitStatus    = 0;      // Iridium transmission status code
-unsigned int  iterationCounter  = 0;      // Counter for program iterations (zero indicates a reset)
 unsigned int  failureCounter    = 0;      // Counter of consecutive failed Iridium transmission attempts
+unsigned int  iterationCounter  = 0;      // Counter for program iterations (zero indicates a reset)
 unsigned long previousMillis    = 0;      // Global millis() timer
 unsigned long alarmTime         = 0;      // Global epoch alarm time variable
 unsigned long unixtime          = 0;      // Global epoch time variable
@@ -350,12 +353,15 @@ typedef union
     uint16_t  transmitDuration;   // Previous transmission duration (2 bytes)
     uint8_t   transmitStatus;     // Iridium return code            (1 byte)
     uint16_t  iterationCounter;   // Message counter                (2 bytes)
-  } __attribute__((packed));                                    // Total: (48 bytes)
+  } __attribute__((packed));                              // Total: (48 bytes)
   uint8_t bytes[48];
 } SBD_MO_MESSAGE;
 static_assert(sizeof(SBD_MO_MESSAGE) <= 50, "Message structure exceeds a single credit (50 bytes).");
 //static_assert(sizeof(SBD_MO_MESSAGE) * (1 + retransmitLimit) <= 340, "Retransmit limit too high for a single message (340 bytes).");
 SBD_MO_MESSAGE moSbdMessage;
+
+// Circular buffer to hold pending messages
+CircularBuffer<SBD_MO_MESSAGE, transmitBuffer> messageBuffer; //FIXME Move me with the others (after moving the whole unions/structs section)
 
 // Union to store received Iridium SBD Mobile Terminated (MT) message
 typedef union
@@ -365,7 +371,7 @@ typedef union
     uint8_t   sampleInterval;     // 1 byte
     uint8_t   averageInterval;    // 1 byte
     uint8_t   transmitInterval;   // 1 byte
-    uint8_t   retransmitLimit;    // 1 byte
+    uint8_t   transmitLimit;      // 1 byte
     uint8_t   batteryCutoff;      // 1 byte
     uint8_t   resetFlag;          // 1 byte
   };
@@ -616,17 +622,17 @@ void loop()
       printStats();
 
       // Check if number of samples collected has been reached and calculate statistics (if enabled)
-      if ((sampleCounter == averageInterval) || firstTimeFlag)
+      if ((sampleCounter >= averageInterval) || firstTimeFlag)
       {
         calculateStats(); // Calculate statistics of variables to be transmitted
-        writeBuffer();    // Write data to transmit buffer
+        addMoSbdMessage(); // Add collected data to message buffer
 
         // Check if data transmission interval has been reached
-        if ((transmitCounter == transmitInterval) || firstTimeFlag)
+        if ((messageBuffer.size() >= transmitInterval) || firstTimeFlag)
         {
           // Check for date change
           checkDate();
-          if (firstTimeFlag || (currentDate != newDate))
+          if ((currentDate != newDate) || firstTimeFlag)
           {
             readGnss(); // Sync RTC with the GNSS
             currentDate = newDate;
