@@ -104,66 +104,59 @@ void transmitData()
         DEBUG_PRINT(mtSbdBufferSize); DEBUG_PRINTLN(" bytes.");
 
         // Check if MT-SBD message is the correct size
-        if (mtSbdBufferSize == 7) //FIXME: This should be sizeof(mtSbdMessage)
+        if (mtSbdBufferSize >= sizeof(mtSbdMessage))
         {
-
           DEBUG_PRINT("Info - MT-SBD message received. Size: ");
           DEBUG_PRINT(mtSbdBufferSize); DEBUG_PRINTLN(" bytes.");
           printMtSbdBuffer(); // Print MT-SBD message in hexadecimal
+          // Write incoming MT-SBD message to union/structure
+          memcpy(mtSbdMessage.bytes, mtSbdBuffer, sizeof(mtSbdMessage));
 
-          // Check if MT-SBD message is the correct size
-          if (mtSbdBufferSize >= sizeof(mtSbdMessage))
+          // Print MT-SBD message
+          printMtSbd(); // Print MT-SBD message stored in union/structure
+
+          // Check if MT-SBD message data is valid and update variables
+          if ((mtSbdMessage.sampleInterval    >= 1  &&  mtSbdMessage.sampleInterval   <= 60)  &&
+              (mtSbdMessage.averageInterval   >= 1  &&  mtSbdMessage.averageInterval  <= 240)  &&
+              (mtSbdMessage.transmitInterval  >= 1  &&  mtSbdMessage.transmitInterval <= 24)  &&
+              (mtSbdMessage.transmitLimit     >= 0  &&  mtSbdMessage.transmitLimit    <= 5)  &&
+              (mtSbdMessage.batteryCutoff     >= 0  &&  mtSbdMessage.batteryCutoff    <= 12)  &&
+              (mtSbdMessage.resetFlag         == 0  ||  mtSbdMessage.resetFlag        == 255))
           {
-            DEBUG_PRINTLN("Info - MT-SBD message correct size.");
+            DEBUG_PRINTLN("Info - All received values within accepted ranges.");
 
-            // Write incoming MT-SBD message to union/structure
-            memcpy(mtSbdMessage.bytes, mtSbdBuffer, sizeof(mtSbdMessage));
-
-            // Print MT-SBD message
-            printMtSbd(); // Print MT-SBD message stored in union/structure
-
-            // Check if MT-SBD message data is valid and update variables
-            if ((mtSbdMessage.sampleInterval    >= 1  &&  mtSbdMessage.sampleInterval   <= 60)  &&
-                (mtSbdMessage.averageInterval   >= 1  &&  mtSbdMessage.averageInterval  <= 240)  &&
-                (mtSbdMessage.transmitInterval  >= 1  &&  mtSbdMessage.transmitInterval <= 24)  &&
-                (mtSbdMessage.retransmitLimit   >= 0  &&  mtSbdMessage.retransmitLimit  <= 5)  &&
-                (mtSbdMessage.batteryCutoff     >= 0  &&  mtSbdMessage.batteryCutoff    <= 12)  &&
-                (mtSbdMessage.resetFlag         == 0  ||  mtSbdMessage.resetFlag        == 255))
-            {
-              DEBUG_PRINTLN("Info - All received values within accepted ranges.");
-
-              sampleInterval    = mtSbdMessage.sampleInterval;    // Update alarm interval
-              averageInterval   = mtSbdMessage.averageInterval;   // Update sample average interval
-              transmitInterval  = mtSbdMessage.transmitInterval;  // Update transmit interval
-              retransmitLimit   = mtSbdMessage.retransmitLimit;   // Update retransmit limit
-              batteryCutoff     = mtSbdMessage.batteryCutoff;     // Update battery cutoff voltage
-              resetFlag         = mtSbdMessage.resetFlag;         // Update force reset flag
-            }
-            else
-            {
-              DEBUG_PRINTLN("Warning - Received values exceed accepted range!");
-            }
+            sampleInterval    = mtSbdMessage.sampleInterval;    // Update alarm interval
+            averageInterval   = mtSbdMessage.averageInterval;   // Update sample average interval
+            transmitInterval  = mtSbdMessage.transmitInterval;  // Update transmit interval
+            transmitLimit     = mtSbdMessage.transmitLimit;   // Update retransmit limit
+            batteryCutoff     = mtSbdMessage.batteryCutoff;     // Update battery cutoff voltage
+            resetFlag         = mtSbdMessage.resetFlag;         // Update force reset flag
           }
           else
           {
-            DEBUG_PRINTLN("Warning - MT-SBD message incorrect size!");
+            DEBUG_PRINTLN("Warning - Received values exceed accepted range!");
           }
         }
         else
         {
-          DEBUG_PRINT("Warning - Transmission failed with error code "); DEBUG_PRINTLN(returnCode);
-          blinkLed(PIN_LED_RED, 10, 500);
+          DEBUG_PRINTLN("Warning - MT-SBD message incorrect size!");
         }
       }
       else
       {
-        DEBUG_PRINT("Warning - Transmission failed with error code ");
-        DEBUG_PRINTLN(returnCode);
+        DEBUG_PRINT("Warning - Transmission failed with error code "); DEBUG_PRINTLN(returnCode);
         blinkLed(PIN_LED_RED, 10, 500);
       }
     }
+    else
+    {
+      DEBUG_PRINT("Warning - Transmission failed with error code ");
+      DEBUG_PRINTLN(returnCode);
+      blinkLed(PIN_LED_RED, 10, 500);
+    }
+  }
 
-    petDog();
+  petDog();
 
   // Store return status code
   transmitStatus = returnCode;

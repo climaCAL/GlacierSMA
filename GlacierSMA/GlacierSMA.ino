@@ -54,6 +54,8 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
+#define __VERSION "5.2.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+
 // ----------------------------------------------------------------------------
 // Data logging
 // ----------------------------------------------------------------------------
@@ -253,7 +255,7 @@ uint8_t       mtSbdBuffer[270];           // Buffer for Mobile Terminated SBD (M
 size_t        moSbdBufferSize   = 0;
 size_t        mtSbdBufferSize   = 0;
 char          logFileName[50]   = "";     // Log file name
-char          dateTime[20]      = "";     // Datetime buffer
+char          datetime[20]      = "";     // Datetime buffer
 byte          currentLogFile    = 0;      // Variable for tracking when new microSD log files are created
 byte          currentDate       = 0;      // Variable for tracking when the date changes
 byte          newDate           = 0;      // Variable for tracking when the date changes
