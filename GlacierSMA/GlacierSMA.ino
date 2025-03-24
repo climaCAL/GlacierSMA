@@ -64,7 +64,7 @@
 // ----------------------------------------------------------------------------
 // Debugging macros
 // ----------------------------------------------------------------------------
-#define DEBUG           true  // Output debug messages to Serial Monitor
+#define DEBUG           false // Output debug messages to Serial Monitor
 #define DEBUG_GNSS      false // Output GNSS debug information
 #define DEBUG_IRIDIUM   false // Output Iridium debug messages to Serial Monitor
 #define NO_TRANSMIT     false // Prevent sending satellite messages
@@ -81,15 +81,15 @@
 #define DEBUG_PRINTLN_DEC(x, y)   SERIAL_PORT.println(x, y)
 #define DEBUG_WRITE(x)            SERIAL_PORT.write(x)
 #else
-#define DEBUG_PRINT(x)
-#define DEBUG_PRINTF(x)
-#define DEBUG_PRINTLN(x)
-#define DEBUG_PRINTFLN(x)
-#define DEBUG_PRINT_HEX(x)
-#define DEBUG_PRINTLN_HEX(x)
-#define DEBUG_PRINT_DEC(x, y)
-#define DEBUG_PRINTLN_DEC(x, y)
-#define DEBUG_WRITE(x)
+#define DEBUG_PRINT(x)            (void)0
+#define DEBUG_PRINTF(x)           (void)0
+#define DEBUG_PRINTLN(x)          (void)0
+#define DEBUG_PRINTFLN(x)         (void)0
+#define DEBUG_PRINT_HEX(x)        (void)0
+#define DEBUG_PRINTLN_HEX(x)      (void)0
+#define DEBUG_PRINT_DEC(x, y)     (void)0
+#define DEBUG_PRINTLN_DEC(x, y)   (void)0
+#define DEBUG_WRITE(x)            (void)0
 #endif
 
 // ----------------------------------------------------------------------------
