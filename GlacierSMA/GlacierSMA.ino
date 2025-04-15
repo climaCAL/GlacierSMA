@@ -54,7 +54,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
-#define __VERSION "5.2.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "5.2.4"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -249,6 +249,7 @@ volatile bool wdtFlag           = false;  // Flag for Watchdog Timer interrupt s
 volatile int  wdtCounter        = 0;      // Watchdog Timer interrupt counter
 volatile int  revolutions       = 0;      // Wind speed ISR counter
 bool          firstTimeFlag     = true;   // Flag to determine if program is running for the first time
+bool          gnssSyncSuccess   = false;  //Flag pour indiquer que le GNSS est parvenu a synchroniser
 bool          resetFlag         = false;  // Flag to force system reset using Watchdog Timer
 uint8_t       moSbdBuffer[340];           // Buffer for Mobile Originated SBD (MO-SBD) message (340 bytes max)
 uint8_t       mtSbdBuffer[270];           // Buffer for Mobile Terminated SBD (MT-SBD) message (270 bytes max)
@@ -634,7 +635,7 @@ void loop()
         {
           // Check for date change
           checkDate();
-          if ((currentDate != newDate) || firstTimeFlag)
+          if ((currentDate != newDate) || firstTimeFlag || !gnssSyncSuccess)
           {
             readGnss(); // Sync RTC with the GNSS
             currentDate = newDate;
@@ -645,6 +646,9 @@ void loop()
         }
 
         sampleCounter = 0; // Reset sample counter
+      } else {  //Cas où le gnss est resté allumé entre 2 cycles d'envoi, on le mettre en sleep SSI on a réussi la synchro
+        if (!gnssSyncSuccess)
+          readGnss();
       }
 
       // Log data to microSD card

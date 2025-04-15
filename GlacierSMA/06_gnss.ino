@@ -65,6 +65,7 @@ void readGnss()
   DEBUG_PRINTLN();
 
   if (fixCounter < 10) {
+    gnssSyncSuccess = false;
     if (online.gnss)
       DEBUG_PRINTLN(F("Warning - Insufficient GNSS fixes found before timeout!"));
     else
@@ -72,6 +73,7 @@ void readGnss()
     blinkLed(PIN_LED_RED, 5, 100);
   }
   else {
+    gnssSyncSuccess = true;
     // Convert GNSS date and time to epoch time
     tmElements_t tm;
     tm.Hour = gnss.time.hour();
@@ -114,7 +116,8 @@ void readGnss()
   GNSS_PORT.end();
 
   // Disable power to GNSS
-  disableGnssPower();
+  if (gnssSyncSuccess)  //Yh disable GNSS Power SSI le RTC a pu etre sync, sinon le GNSS reste en fonction jusqu'à synchro
+    disableGnssPower();
 
   // Stop the loop timer
   timer.readGnss = millis() - loopStartTime;
