@@ -78,9 +78,9 @@ void createLogFile()
   //FIXME Maybe we should skip this if the file already exists?
   logFile.println(F("sample,datetime,voltage,pressure_int,temperature_int,humidity_int,pressure_ext,temperature_ext,"
                     "humidity_ext,pitch,roll,wind_speed,wind_direction,solar,hauteur_neige,temperature_HN,latitude,longitude,"
-                    "satellites,hdop,online_bme280_ext,online_bme280_int,online_lsm303,online_veml7700,online_dfrws,online_gnss,"
+                    "satellites,hdop,online_bme280_ext,online_bme280_int,online_lsm303,online_veml7700,online_bridge,online_gnss,"
                     "online_microSd,online_iridium,timer_readRtc,timer_readBattery,timer_bme280_ext,timer_bme280_int,"
-                    "timer_lsm303,timer_veml7700,timer_dfrws,timer_readGnss,timer_writeMicroSd,timer_iridium,"
+                    "timer_lsm303,timer_veml7700,timer_bridge,timer_readGnss,timer_writeMicroSd,timer_iridium,"
                     "transmit_status,rtc_drift,free_ram,"
                     "sampleInterval,averageInterval,transmitInterval,retransmitLimit,gnssTimeout,iridiumTimeout"));
 
@@ -165,7 +165,7 @@ void logData()
       LOG_PRINT(online.bme280Int);
       LOG_PRINT(online.lsm303);
       LOG_PRINT(online.veml7700);
-      LOG_PRINT(online.dfrws);
+      LOG_PRINT(online.bridge);
       LOG_PRINT(online.gnss);
       LOG_PRINT(online.microSd);
       LOG_PRINT(online.iridium);
@@ -180,7 +180,7 @@ void logData()
       //LOG_PRINT(timer.readHmp60);
       //LOG_PRINT(timer.read5103L);
       //LOG_PRINT(timer.readSp212);
-      LOG_PRINT(timer.readDFRWS);
+      LOG_PRINT(timer.readBridge);
       LOG_PRINT(timer.readGnss);
       LOG_PRINT(timer.writeMicroSd);
       LOG_PRINT(timer.iridium);

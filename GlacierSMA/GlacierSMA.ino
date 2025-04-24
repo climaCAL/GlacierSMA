@@ -126,6 +126,8 @@
 #define PIN_RFM95_RST       7   // LoRa "A"
 #define PIN_RFM95_INT       7   // LoRa "D"
 
+#define STVSN_UNREACHABLE 1UL<<15  //code d'erreur du Stevenson non-rejoignable (réponse du bridge)
+
 // ------------------------------------------------------------------------------------------------
 // Port configuration
 // ------------------------------------------------------------------------------------------------
@@ -174,6 +176,11 @@ StatisticCAL humidityIntStats;     // Humidity from internal sensor
 StatisticCAL pressureExtStats;     // Pressure from external sensor
 StatisticCAL temperatureExtStats;  // Temperature from external sensor
 StatisticCAL humidityExtStats;     // Humidity from external sensor
+
+Statistic tempBMEMdb;           // Temperature from BME280 Modbus
+Statistic humBMEMdb;            // Humidity from BME280 Modbus
+Statistic presBMEMdb;           // Atmosph Pressure from BME280 Modbus
+
 StatisticCAL solarStats;           // Solar radiation
 StatisticCAL hauteurNeigeStats;    // Suivi hauteur de neige
 StatisticCAL windSpeedStats;       // Wind speed
@@ -184,8 +191,8 @@ StatisticCAL vStats;               // Wind north-south wind vector component (v)
 // User defined configuration variables
 // ----------------------------------------------------------------------------
 #if DEBUG
-unsigned int  sampleInterval    = 1;      // Sampling interval (minutes). Default: 5 min (300 seconds)
-unsigned int  averageInterval   = 15;     // Number of samples to be averaged in each message. Default: 12 (hourly)
+unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
+unsigned int  averageInterval   = 3;      // Number of samples to be averaged in each message. Default: 12 (hourly)
 unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
 unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
 const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
@@ -264,6 +271,7 @@ byte          transmitCounter   = 0;      // Counter for Iridium 9603 transmissi
 int           transmitStatus    = 0;      // Iridium transmission status code
 unsigned int  failureCounter    = 0;      // Counter of consecutive failed Iridium transmission attempts
 unsigned int  iterationCounter  = 0;      // Counter for program iterations (zero indicates a reset)
+unsigned int  bridgeRetryCount  = 0;      // Compteur de tentative de contacter le bridge
 unsigned long previousMillis    = 0;      // Global millis() timer
 unsigned long alarmTime         = 0;      // Global epoch alarm time variable
 unsigned long unixtime          = 0;      // Global epoch time variable
@@ -277,6 +285,9 @@ float         humidityInt       = 0.0;    // Internal hunidity (%)
 float         pressureExt       = 0.0;    // External pressure (hPa)
 float         temperatureExt    = 0.0;    // External temperature (°C)
 float         humidityExt       = 0.0;    // External humidity (%)
+float         temperatureBMEMdb = 0.0;    // Temperature selon cpateur BME280 Modbus
+float         humidityBMEMdb    = 0.0;    // humidité selon cpateur BME280 Modbus
+float         pressureBMEMdb    = 0.0;    // Presion atmosph selon cpateur BME280 Modbus
 float         pitch             = 0.0;    // Pitch (°)
 float         roll              = 0.0;    // Roll (°)
 float         solar             = 0.0;    // Solar radiation (lx)
@@ -293,13 +304,14 @@ float         longitude         = 0.0;    // GNSS longitude (DD)
 byte          satellites        = 0;      // GNSS satellites
 float         hdop              = 0.0;    // GNSS HDOP
 uint16_t      lastStvsnErrCode  = 0;      // Last status of Stevenson Error Code
+uint16_t      lastBMEMdbErrCode = 0;      // last err code du BME280 Modbus
 
 // ----------------------------------------------------------------------------
 // Unions/structures
 // ----------------------------------------------------------------------------
 
 // DFRWindSensor (CAL) struc to store/retreive data
-const int regMemoryMapSize = 10;
+const int regMemoryMapSize = 17;
 union sensorsDataRaw {
   struct {
     uint16_t angleVentReg = 0; // direction vent en degrés (0-360)
@@ -311,7 +323,11 @@ union sensorsDataRaw {
     uint16_t humExtReg    = 0; // humidite du BME280 dans le Stevenson
     uint16_t presExtReg   = 0; // pression du BME280 dans le Stevenson
     uint16_t luminoReg    = 0; // Luminosite du VEML7700 dans le Stevenson
-    uint16_t stvsnErrReg  = 0;
+    uint16_t stvsnErrReg  = 0; // Status des lectures du Stevenson
+    uint16_t tempBMEMdb   = 0; // Temperature du BME280 modbus
+    uint16_t humBMEMdb    = 0; // Humidité du BME280 modbus
+    uint16_t presBMEMdb   = 0; // Pression du BME280 modbus
+    uint16_t BMEMdbErr    = 0; // Code d'erreur de lecture du BME280 modbus
   } __attribute__((packed));
   uint16_t regMemoryMap[regMemoryMapSize];
 };
@@ -328,6 +344,10 @@ struct sensorsData {
   float presAtmospExt = 0.0;             //V0.7
   float luminoAmbExt = 0.0;              //V0.7
   uint16_t stvsnErrCode = 0;             //V0.8
+  float tempBMEMdb = 0.0;                //v0.9
+  float humBMEMdb = 0.0;                 //v0.9
+  float presBMEMdb = 0.0;                //v0.9
+  uint8_t BMEMdbErr = 0;                 //v0.9 0=success
 };
 
 // Union to store Iridium Short Burst Data (SBD) Mobile Originated (MO) messages
@@ -397,10 +417,12 @@ struct struct_online
   bool wm5103L  = 1; //TODO Retirer
   bool di7911   = 1; //TODO Retirer
   bool sp212    = 1; //TODO Retirer
-  bool dfrws    = 0; // Est le bridge RS-485 (TODO: Renommer)
+  bool bridge   = 0; // Est le bridge RS-485 (TODO: Renommer)
   bool gnss     = 0;
   bool iridium  = 0;
   bool microSd  = 0;
+  bool hneige   = 0;
+  bool bme280mdb = 0;
 } disabled, online;
 
 // Structure to store function timers
@@ -417,7 +439,7 @@ struct struct_timer
   unsigned long read5103L;
   unsigned long read7911;
   unsigned long readSp212;
-  unsigned long readDFRWS;
+  unsigned long readBridge;
   unsigned long readGnss;
   unsigned long writeMicroSd;
   unsigned long iridium;
@@ -481,17 +503,18 @@ void setup()
     readBme280Int();  // Read temperature and humidty sensor (external)
     DEBUG_PRINT(">  (BME280Int) Fram state: "); DEBUG_PRINTLN(freeRam());
 
-    readBme280Ext();     // Read temperature and humidty sensor (external)
-    DEBUG_PRINT(">  (BME280Ext) Fram state: "); DEBUG_PRINTLN(freeRam());
+//    readBme280Ext();     // Read temperature and humidty sensor (external)
+//    DEBUG_PRINT(">  (BME280Ext) Fram state: "); DEBUG_PRINTLN(freeRam());
 
     readLsm303();
     DEBUG_PRINT(">  (LSM303) Fram state: "); DEBUG_PRINTLN(freeRam());
 
-    readVeml7700();    // Read solar radiation
-    DEBUG_PRINT(">  (VEML7700) Fram state: "); DEBUG_PRINTLN(freeRam());
+//    readVeml7700();    // Read solar radiation
+//    DEBUG_PRINT(">  (VEML7700) Fram state: "); DEBUG_PRINTLN(freeRam());
 
-    readDFRWindSensor(); //TODO Rename me
-    DEBUG_PRINT(">  (DFRWS) Fram state: "); DEBUG_PRINTLN(freeRam());
+    //Chg:readDFRWindSensor(); //TODO Rename me
+    bool status = readBridgeData(4000);
+    DEBUG_PRINT(">  (BRIDGE) Fram state: "); DEBUG_PRINTLN(freeRam());
 
     //readGnss(); // Sync RTC with the GNSS
 
@@ -616,10 +639,21 @@ void loop()
       else
         readVeml7700();
 
-      if (disabled.dfrws)
-        DEBUG_PRINTLN("Info - DFRWS disabled");
-      else
-        readDFRWindSensor(); // Read anemometer and windDirection
+      if (disabled.bridge)
+        DEBUG_PRINTLN("Info - Bridge disabled");
+      else {
+        //Yh - 24 avril 2025: collecter le data du bridgeI2C ssi on a tout ok. Remplace de grand délais de 15sec, on a jusqu'à 4 (arbitraire) itérations/essais
+        // ceci dans le but de réduire le temps de collecte du data.
+        const int maxCount = 4;
+        int maxLoopcount = maxCount;   //arbitraire
+        bool bridgeRetCode = false;
+        do {    //période d'essais: total 3x4sec = 12sec
+          bridgeRetCode = readBridgeData(4000);    // Lire les données du bridgeI2C, passer le délais d'attente (4000=arbitraire)
+          if (!bridgeRetCode) maxLoopcount--;     //Si n'a pas été un succès, on décrémente le nombre d'essais restant
+        } while (!bridgeRetCode && maxLoopcount);
+
+        bridgeRetryCount += maxCount - maxLoopcount;  //Information conservée pour suivi et statistic de performance
+      }
 
       // Print summary of statistics
       printStats();
@@ -646,6 +680,8 @@ void loop()
         }
 
         sampleCounter = 0; // Reset sample counter
+        bridgeRetryCount = 0; //Reset du compteur du polling du bridge
+
       } else {  //Cas où le gnss est resté allumé entre 2 cycles d'envoi, on le mettre en sleep SSI on a réussi la synchro
         if (!gnssSyncSuccess)
           readGnss();
