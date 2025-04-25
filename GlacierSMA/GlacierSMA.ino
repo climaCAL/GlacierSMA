@@ -54,7 +54,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
-#define __VERSION "5.2.4"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "5.3.2"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
