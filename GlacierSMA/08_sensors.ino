@@ -723,6 +723,8 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
     }
 
     if (disabled.hneige) { // HAUTEUR DE NEIGE
+      DEBUG_PRINTFLN("hneige disabled... skip");
+    } else {
       //Traitement hauteur de neige et température capteur HN:
       if (bridgeDataRaw.HNeigeReg == HN_ERRORVAL) {
         DEBUG_PRINTFLN("\thauteurNeige: Invalid data");
@@ -757,7 +759,9 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
 
 
     //Traitement du data BME280 Modbus: temperature
-    if (disabled.bme280mdb) {
+    if (disabled.bme280mdb) { 
+      DEBUG_PRINTFLN("bme280 modbus disabled... skip");
+    } else {
 
       //Traitement du data BME280 Modbus: température
       if (((int16_t)bridgeDataRaw.tempBMEMdb) != temp_ERRORVAL) {
@@ -845,6 +849,8 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
 
     if (!(bridgeData.stvsnErrCode & STVSN_UNREACHABLE)) {
       if (disabled.bridge) { // TPH (BME280 EXT)
+        DEBUG_PRINTFLN("bridge disabled... skip");
+      } else {
         //Traitement data Stevenson - température (BME280):
         if ((int16_t)bridgeDataRaw.tempExtReg != temp_ERRORVAL) {
           //Application du décodage:
@@ -910,7 +916,9 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
         // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
       } //end-if disabled.bridge
 
-      if (disabled.bridge) { // LUMINOSITE (VEML7700)
+      if (disabled.bridge) { // LUMINOSITE (bridge VEML7700)
+        DEBUG_PRINTFLN("bridge (veml) disabled... skip");
+      } else { 
         //Traitement data Stevenson - luminosité (VEML7700):
         // Lumino: en cas d'erreur, la valeur recue sera 0 //FIXME This could use an error value for extra clarity.
 

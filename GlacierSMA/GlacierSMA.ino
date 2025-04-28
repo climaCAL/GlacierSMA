@@ -54,7 +54,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
-#define __VERSION "5.3.2"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "5.3.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -421,8 +421,8 @@ struct struct_online
   bool gnss     = 0;
   bool iridium  = 0;
   bool microSd  = 0;
-  bool hneige   = 0;
-  bool bme280mdb = 0;
+  bool hneige   = 1;
+  bool bme280mdb = 1;
 } disabled, online;
 
 // Structure to store function timers
