@@ -645,18 +645,21 @@ const uint16_t bridgeSettleDelay = 15000; // 15 secondes! oui... pas encore opti
 const uint16_t valeurLimiteHauteurNeige = 4000; // Max acceptable pour la valeur de mesure hauteur de neige
 const float facteurMultLumino = 3800.0; // Facteur d'échelonnage lors de la conversion à un 16bits (encodage) pour mettre dans le registre
 
-void readDFRWindSensor() 
+//Chg:void readDFRWindSensor() 
+bool readBridgeData(unsigned int bridgeSettleDelay) 
 {
   // Start the loop timer
   unsigned long loopStartTime = millis();
 
-  DEBUG_PRINT("Info - Reading DFRWindSensor... ");
+  bool retCode = false;  //Code global de retour de l'appel de cette fonction. true=tout a bien été false=qqch s'est mal passé
+
+  DEBUG_PRINT("Info - Reading bridgeData ");
 
   if (!scanI2CbusFor(BRIDGE_SENSOR_SLAVE_ADDR, 1)) {
     DEBUG_PRINTLN("failed!");
-    online.dfrws = false;
-    timer.readDFRWS += millis() - loopStartTime; // Update the loop timer anyway
-    return;
+    online.bridge = false;
+    timer.readBridge += millis() - loopStartTime; // Update the loop timer anyway
+    return false;
   }
 
   // Il faut laisser du temps au bridgeI2C de collecter les donnees sur le modbus RS485, tout en laissant les capteurs faire leur travail.
@@ -668,20 +671,25 @@ void readDFRWindSensor()
   sensorsData bridgeData; // Struct for parsed sensor data
 
   byte len = Wire.requestFrom(BRIDGE_SENSOR_SLAVE_ADDR, sizeof(sensorsDataRaw));  // Requesting _ bytes from slave
+  bool allZeros = true;
   if (len == 0) {
     DEBUG_PRINTLN("failed!");
-    online.dfrws = false;
-    timer.readDFRWS += millis() - loopStartTime; // Update the loop timer anyway
-    return;
+    online.bridge = false;
+    timer.readBridge += millis() - loopStartTime; // Update the loop timer anyway
+    return false;
   }
   else {
-    online.dfrws = true;
+    online.bridge = true;
     
     for (int i = 0; i < len/2 && Wire.available() >= 2; i++) { //TODO I'm 99% sure the Wire.available() is redundant but I'll confirm later.
       uint8_t LSB = Wire.read();
       uint8_t MSB = Wire.read();
       bridgeDataRaw.regMemoryMap[i] = (MSB<<8)+LSB;
+      if (bridgeDataRaw.regMemoryMap[i]) allZeros=false;  //Si on détecte 1 valeur à autre chose que 0, c'est qu'on a potentiellement qqch de bon
     }
+
+    //Vérification si on a lu que des 0
+    if (allZeros)  return false;  //Sugg: voir si dans ce cas on devrait pas lancer un reset du bus I2C.
 
     DEBUG_PRINTLN();
     DEBUG_PRINTF("\t*RAW* readings: ");
@@ -714,7 +722,9 @@ void readDFRWindSensor()
       }
     }
 
-    { // HAUTEUR DE NEIGE
+    if (disabled.hneige) { // HAUTEUR DE NEIGE
+      DEBUG_PRINTFLN("hneige disabled... skip");
+    } else {
       //Traitement hauteur de neige et température capteur HN:
       if (bridgeDataRaw.HNeigeReg == HN_ERRORVAL) {
         DEBUG_PRINTFLN("\thauteurNeige: Invalid data");
@@ -745,111 +755,201 @@ void readDFRWindSensor()
           DEBUG_PRINTF("\tHauteurNeige: "); DEBUG_PRINT(hauteurNeige); DEBUG_PRINTFLN(" mm");
         #endif
       }
-    }
+    } //#end-if disabled hneige
 
-    { // TPH (BME280 EXT)
-      //Traitement data Stevenson - température (BME280):
-      if ((int16_t)bridgeDataRaw.tempExtReg != temp_ERRORVAL) {
-        //Application du décodage:
-        bridgeData.temperatureExt = (int16_t)bridgeDataRaw.tempExtReg / 100.0;
 
-        //Application de la correction selon étalonnage
-        bridgeData.temperatureExt  = tempBmeEXT_CF * bridgeData.temperatureExt + tempBmeEXT_Offset;
+    //Traitement du data BME280 Modbus: temperature
+    if (disabled.bme280mdb) { 
+      DEBUG_PRINTFLN("bme280 modbus disabled... skip");
+    } else {
 
-        if (bridgeData.temperatureExt > -40.0 && bridgeData.temperatureExt < 50.0) {
-          temperatureExt = bridgeData.temperatureExt;  // External temperature (°C)
+      //Traitement du data BME280 Modbus: température
+      if (((int16_t)bridgeDataRaw.tempBMEMdb) != temp_ERRORVAL) {
+        bridgeData.tempBMEMdb = ((int16_t)bridgeDataRaw.tempBMEMdb) / 10.0;
 
-          // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
+        // TODO: définir et appliquer un facteur de calibration
 
-          temperatureExtStats.add(temperatureExt);
-
-          #if CALIBRATE
-              DEBUG_PRINTF("\tTemperatureExt: "); DEBUG_PRINT(bridgeData.temperatureExt); DEBUG_PRINTFLN(" C");
-          #endif
-        } // else: la valeur est "rejetée"
+        //Valider la valeur avant d'insérer dans Statistic
+        if (bridgeData.tempBMEMdb > -40.0 && bridgeData.tempBMEMdb < 50.0) {
+          temperatureBMEMdb = bridgeData.tempBMEMdb;
+          tempBMEMdb.add(temperatureBMEMdb);
+        }
+        #if CALIBRATE
+          DEBUG_PRINTF("\tTemperatureBMEMdb: "); DEBUG_PRINT(temperatureBMEMdb); DEBUG_PRINTFLN(" C");
+        #endif
+      } else { // valeur non-traitée = rejetée
+        #if CALIBRATE
+          DEBUG_PRINTFLN("\tTemperatureBMEMdb: error value");
+        #endif
       }
-      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+        
+      //Traitement du data BME280 Modbus: humidité
+      if (((int16_t)bridgeDataRaw.humBMEMdb) != hum_ERRORVAL) {
+        bridgeData.humBMEMdb = bridgeDataRaw.humBMEMdb / 10.0;  //On conserve en unsigned
 
-      //Traitement data Stevenson - humidité (BME280):
-      if ((int16_t)bridgeDataRaw.humExtReg != hum_ERRORVAL) {
-        //Application du décodage:
-        bridgeData.humiditeExt = bridgeDataRaw.humExtReg / 100.0;
+        // TODO: définir et appliquer un facteur de calibration
 
-        //Application de la correction selon étalonnage
-        float humExt = humBmeEXT_CF * bridgeData.humiditeExt + humBmeEXT_Offset;
-
-        // Protection en cas de mauvaise valeur après étalonnage
-        if (humExt >= 100) {
-          humidityExt = 100.0;
+        //Valider la valeur avant d'insérer dans Statistic
+        if (bridgeData.humBMEMdb >= 100.0) {
+          bridgeData.humBMEMdb = 100.0;
         } else {
-          humidityExt = humExt;
+          if (bridgeData.humBMEMdb <= 0.0) bridgeData.humBMEMdb=0.0;
         }
 
-        humidityExtStats.add(humidityExt);
-
+        humidityBMEMdb = bridgeData.humBMEMdb;
+        humBMEMdb.add(humidityBMEMdb);
         #if CALIBRATE
-            DEBUG_PRINTF("\tHumidityExt: "); DEBUG_PRINT(bridgeData.humiditeExt); DEBUG_PRINTFLN("%");
+          DEBUG_PRINTF("\tHumiditeBMEMdb: "); DEBUG_PRINT(humidityBMEMdb); DEBUG_PRINTFLN(" %");
+        #endif
+      } else { // valeur non-traitée = rejetée
+        #if CALIBRATE
+          DEBUG_PRINTFLN("\tHumiditeBMEMdb: error value");
         #endif
       }
-      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
 
-      //Traitement data Stevenson - pression atmoshpérique (BME280):
-      if ((int16_t)bridgeDataRaw.presExtReg != pres_ERRORVAL) {
+      //Traitement du data BME280 Modbus:  pression atmosphérique
+      if (((int16_t)bridgeDataRaw.presBMEMdb) != pres_ERRORVAL) {
 
         //Application du décodage:
-        bridgeData.presAtmospExt = bridgeDataRaw.presExtReg / 10.0;  //On veut en hPa
+        bridgeData.presBMEMdb = ((uint16_t)bridgeDataRaw.presBMEMdb) * 1.0;  //Valeur brute en hPa, on veut en hPa
 
-        //Application de la correction selon étalonnage  
-        pressureExt = presBmeEXT_CF * bridgeData.presAtmospExt + presBmeEXT_Offset;
+        // TODO: définir et appliquer un facteur de calibration
 
-        // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
-
-        pressureExtStats.add(pressureExt);
+        // Protection en cas de mauvaise valeur après étalonnage?
+        if (bridgeData.presBMEMdb > 0) {
+          pressureBMEMdb = bridgeData.presBMEMdb;
+          presBMEMdb.add(pressureBMEMdb);
+        }
 
         #if CALIBRATE
-            DEBUG_PRINTF("\tPressureExt: "); DEBUG_PRINT(bridgeData.presAtmospExt); DEBUG_PRINTFLN(" hPa");
+          DEBUG_PRINTF("\tpressureBMEMdb: "); DEBUG_PRINT(pressureBMEMdb); DEBUG_PRINTFLN(" kPa");
         #endif
-      }  
-      // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
-    }
+      }  else { // valeur non-traitée = rejetée
+        #if CALIBRATE
+          DEBUG_PRINTFLN("\tpressureBMEMdb: error value");
+        #endif
+      }
 
-    { // LUMINOSITE (VEML7700)
-      //Traitement data Stevenson - luminosité (VEML7700):
-      // Lumino: en cas d'erreur, la valeur recue sera 0 //FIXME This could use an error value for extra clarity.
-
-      //Application du décodage:
-      if (bridgeDataRaw.luminoReg > 0) {
-        float tempLum = bridgeDataRaw.luminoReg / facteurMultLumino;
-        bridgeData.luminoAmbExt = pow(10, tempLum); //TODO This means the smallest possible value is 10 lux; why not support negatives?
-      } else bridgeData.luminoAmbExt = 0.0;
-
-      //Application de la correction selon étalonnage
-      solar = veml_CF * bridgeData.luminoAmbExt + veml_Offset;
-
-      // Protection en cas de mauvaise valeur après étalonnage
-      if (solar > 0 && solar < 188000) {
-        solarStats.add(solar);   // Add acquisition        
-      } else solar = 0.0;
-
-      // Ex en date du 2 mai 2024: 
+      //Recupération de l'information d'état de lecture du périphérique BME280 Modbus:
+      lastBMEMdbErrCode = bridgeDataRaw.BMEMdbErr;  //Ne récupère que la valeur du moment
+      bridgeData.BMEMdbErr = (uint8_t)(bridgeDataRaw.BMEMdbErr);   //Yh 24fev2025: Utile?
       #if CALIBRATE
-          DEBUG_PRINTF(">\tluminosite: raw="); DEBUG_PRINT(bridgeDataRaw.luminoReg);
-          DEBUG_PRINTF(" luminoAmbExt="); DEBUG_PRINT(bridgeData.luminoAmbExt);
-          DEBUG_PRINTF(" solar="); DEBUG_PRINT(solar);
-          DEBUG_PRINTF(" solarStats="); DEBUG_PRINT(solarStats.average());
-          DEBUG_PRINTLN();
+        DEBUG_PRINTF("\tlastBMEMdbErrCode: ");
+        if (lastBMEMdbErrCode) DEBUG_PRINTF("*ATTN* ");
+        DEBUG_PRINTLN(lastBMEMdbErrCode);
       #endif
-    }
+    } //end-if disabled.bme280mdb
 
     //Recupération de l'information d'état de lecture par le périphérique:
     bridgeData.stvsnErrCode = (uint16_t)bridgeDataRaw.stvsnErrReg;
-    lastStvsnErrCode = bridgeData.stvsnErrCode || lastStvsnErrCode; // Yh 14nov24: fait un OR pour conserver entre 2 collectes, jusqu'à ce que l'envoie soit fait. Pas parfait, mais on aura l'info que pendant le cycle on a rencontré une erreur.
+    lastStvsnErrCode =  lastStvsnErrCode | bridgeData.stvsnErrCode; // Yh 14nov24: fait un OR pour conserver entre 2 collectes, jusqu'à ce que l'envoie soit fait. Pas parfait, mais on aura l'info que pendant le cycle on a rencontré une erreur.
     if (bridgeData.stvsnErrCode) { DEBUG_PRINTF("*ATTN* "); }
     DEBUG_PRINTF("\tstvsnErrCode: ");
     DEBUG_PRINTLN(bridgeData.stvsnErrCode);
 
+    if (!(bridgeData.stvsnErrCode & STVSN_UNREACHABLE)) {
+      if (disabled.bridge) { // TPH (BME280 EXT)
+        DEBUG_PRINTFLN("bridge disabled... skip");
+      } else {
+        //Traitement data Stevenson - température (BME280):
+        if ((int16_t)bridgeDataRaw.tempExtReg != temp_ERRORVAL) {
+          //Application du décodage:
+          bridgeData.temperatureExt = (int16_t)bridgeDataRaw.tempExtReg / 100.0;
+
+          //Application de la correction selon étalonnage
+          bridgeData.temperatureExt  = tempBmeEXT_CF * bridgeData.temperatureExt + tempBmeEXT_Offset;
+
+          if (bridgeData.temperatureExt > -40.0 && bridgeData.temperatureExt < 50.0) {
+            temperatureExt = bridgeData.temperatureExt;  // External temperature (°C)
+
+            // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
+
+            temperatureExtStats.add(temperatureExt);
+
+            #if CALIBRATE
+                DEBUG_PRINTF("\tTemperatureExt: "); DEBUG_PRINT(bridgeData.temperatureExt); DEBUG_PRINTFLN(" C");
+            #endif
+          } // else: la valeur est "rejetée"
+        }
+        // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+
+        //Traitement data Stevenson - humidité (BME280):
+        if ((int16_t)bridgeDataRaw.humExtReg != hum_ERRORVAL) {
+          //Application du décodage:
+          bridgeData.humiditeExt = bridgeDataRaw.humExtReg / 100.0;
+
+          //Application de la correction selon étalonnage
+          float humExt = humBmeEXT_CF * bridgeData.humiditeExt + humBmeEXT_Offset;
+
+          // Protection en cas de mauvaise valeur après étalonnage
+          if (humExt >= 100) {
+            humidityExt = 100.0;
+          } else {
+            humidityExt = humExt;
+          }
+
+          humidityExtStats.add(humidityExt);
+
+          #if CALIBRATE
+              DEBUG_PRINTF("\tHumidityExt: "); DEBUG_PRINT(bridgeData.humiditeExt); DEBUG_PRINTFLN("%");
+          #endif
+        }
+        // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+
+        //Traitement data Stevenson - pression atmoshpérique (BME280):
+        if ((int16_t)bridgeDataRaw.presExtReg != pres_ERRORVAL) {
+
+          //Application du décodage:
+          bridgeData.presAtmospExt = bridgeDataRaw.presExtReg / 10.0;  //On veut en hPa
+
+          //Application de la correction selon étalonnage  
+          pressureExt = presBmeEXT_CF * bridgeData.presAtmospExt + presBmeEXT_Offset;
+
+          // Protection en cas de mauvaise valeur après étalonnage?  n'a pas (encore) au 30 avril 2024 Yh
+
+          pressureExtStats.add(pressureExt);
+
+          #if CALIBRATE
+              DEBUG_PRINTF("\tPressureExt: "); DEBUG_PRINT(bridgeData.presAtmospExt); DEBUG_PRINTFLN(" hPa");
+          #endif
+        }  
+        // Question: est-ce qu'il faut injecter 0 dans le cas contraire?
+      } //end-if disabled.bridge
+
+      if (disabled.bridge) { // LUMINOSITE (bridge VEML7700)
+        DEBUG_PRINTFLN("bridge (veml) disabled... skip");
+      } else { 
+        //Traitement data Stevenson - luminosité (VEML7700):
+        // Lumino: en cas d'erreur, la valeur recue sera 0 //FIXME This could use an error value for extra clarity.
+
+        //Application du décodage:
+        if (bridgeDataRaw.luminoReg > 0) {
+          float tempLum = bridgeDataRaw.luminoReg / facteurMultLumino;
+          bridgeData.luminoAmbExt = pow(10, tempLum); //TODO This means the smallest possible value is 10 lux; why not support negatives?
+        } else bridgeData.luminoAmbExt = 0.0;
+
+        //Application de la correction selon étalonnage
+        solar = veml_CF * bridgeData.luminoAmbExt + veml_Offset;
+
+        // Protection en cas de mauvaise valeur après étalonnage
+        if (solar > 0 && solar < 188000) {
+          solarStats.add(solar);   // Add acquisition        
+        } else solar = 0.0;
+
+        // Ex en date du 2 mai 2024: 
+        #if CALIBRATE
+            DEBUG_PRINTF(">\tluminosite: raw="); DEBUG_PRINT(bridgeDataRaw.luminoReg);
+            DEBUG_PRINTF(" luminoAmbExt="); DEBUG_PRINT(bridgeData.luminoAmbExt);
+            DEBUG_PRINTF(" solar="); DEBUG_PRINT(solar);
+            DEBUG_PRINTF(" solarStats="); DEBUG_PRINT(solarStats.average());
+            DEBUG_PRINTLN();
+        #endif
+      } //end-if disabled.bridge
+    } //end-if cas de non-erreur Stevenson
+
+
     //--- Fin de la grande section de la récupération des valeurs et validation des codes d'erreurs --------------------------
-  }
+  } //End-if reponse longueur positive du I2C
 
   // Calculate wind speed and direction vectors
   // http://tornado.sfsu.edu/geosciences/classes/m430/Wind/WindDirection.html
@@ -875,8 +975,15 @@ void readDFRWindSensor()
   DEBUG_PRINTF("\tPressureExt: "); DEBUG_PRINTLN(pressureExt);
   DEBUG_PRINTF("\tluminoAmbExt: "); DEBUG_PRINTLN(solar);
 
+  if (((bridgeData.stvsnErrCode & STVSN_UNREACHABLE) && disabled.bridge) || (bridgeData.BMEMdbErr && disabled.bme280mdb))
+   retCode = false;
+  else
+   retCode = true;
+
   // Stop the loop timer
-  timer.readDFRWS += millis() - loopStartTime;
+  timer.readBridge += millis() - loopStartTime;
+
+  return retCode;
 }
 
 
