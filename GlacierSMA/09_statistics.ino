@@ -9,12 +9,28 @@ void calculateStats() //FIXME What an awful name for a function that DELETES all
   //Yh 21-janv-2025: en appliquant de cette manière, se fie-t-on à une conversion implicite, par le compilateur?
   moSbdMessage.temperatureInt = nan2zero(temperatureIntStats.average()      * 100);     // Mean internal temperature (°C)
   moSbdMessage.humidityInt    = nan2zero(humidityIntStats.average()         * 100);     // Mean internal humidity (%)
-  moSbdMessage.pressureExt    = nan2zero((pressureExtStats.average() - 400) * 100);     // Mean external pressure (hPa)
-  moSbdMessage.temperatureExt = nan2zero(temperatureExtStats.average()      * 100);     // Mean external temperature (°C)
-  moSbdMessage.humidityExt    = nan2zero(humidityExtStats.average()         * 100);     // Mean external humidity (%)
-  moSbdMessage.solar          = nan2zero(solarStats.average()               * 10000);   // Mean solar irradiance (lx)
+  
+  if (!disabled.bme280stv) {
+    moSbdMessage.pressureExt    = nan2zero((pressureExtStats.average() - 400) * 100);     // Mean external pressure (hPa)
+    moSbdMessage.temperatureExt = nan2zero(temperatureExtStats.average()      * 100);     // Mean external temperature (°C)
+    moSbdMessage.humidityExt    = nan2zero(humidityExtStats.average()         * 100);     // Mean external humidity (%)
+  }
+  if (!disabled.bme280mdb) {
+    moSbdMessage.pressureExt    = nan2zero((presBMEMdbStats.average()       - 400) * 100);     // Mean external pressure (hPa)
+    moSbdMessage.temperatureExt = nan2zero(tempBMEMdbStats.average()               * 100);     // Mean external temperature (°C)
+    moSbdMessage.humidityExt    = nan2zero(humBMEMdbStats.average()                * 100);     // Mean external humidity (%)
+  }
+  
+  if (!disabled.veml77stv)
+    moSbdMessage.solar          = nan2zero(solarStats.average()               * 10000);   // Mean solar irradiance (lx)
+  
+  if (!disabled.luminomdb)
+    moSbdMessage.solar          = nan2zero(luminoMdbStats.average()                * 10000);   // Mean solar irradiance (lx)  
+
   //moSbdMessage.solar          = nan2zero(log10(solarStats.average()) * facteurMultLumino); // Mean solar irradiance (W/m^2), 3800*log(lx)
+  
   moSbdMessage.hauteurNeige   = nan2zero(hauteurNeigeStats.average()        * 1);       // Hauteur de neige (mm)
+  
   moSbdMessage.voltage        = nan2zero(batteryStats.average()             * 100);     // Mean battery voltage (V)
 
   // Calculate mean wind speed and direction vectors
@@ -46,10 +62,16 @@ void clearStats()
   temperatureExtStats.clear();
   humidityExtStats.clear();
   solarStats.clear();
-  hauteurNeigeStats.clear();
+  
   windSpeedStats.clear();
   uStats.clear();
   vStats.clear();
+  hauteurNeigeStats.clear();
+  temphneigeStats.clear();
+  tempBMEMdbStats.clear();
+  humBMEMdbStats.clear();
+  presBMEMdbStats.clear();
+  luminoMdbStats.clear();
 }
 
 // Print statistics

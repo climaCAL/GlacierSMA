@@ -143,16 +143,34 @@ void logData()
       LOG_PRINT(pressureInt);
       LOG_PRINT(temperatureInt);
       LOG_PRINT(humidityInt);
-      LOG_PRINT(pressureExt);
-      LOG_PRINT(temperatureExt);
-      LOG_PRINT(humidityExt);
+
+      if (!disabled.bme280stv) {
+        LOG_PRINT(pressureExt);
+        LOG_PRINT(temperatureExt);
+        LOG_PRINT(humidityExt);
+      } else if (!disabled.bme280mdb) {
+        LOG_PRINT(pressureBMEMdb);
+        LOG_PRINT(temperatureBMEMdb);
+        LOG_PRINT(humidityBMEMdb);      
+      } else LOG_PRINT("na");  //na = not avialable
+
       LOG_PRINT(pitch);
       LOG_PRINT(roll);
       LOG_PRINT(windSpeed);
       LOG_PRINT(windDirection);
-      LOG_PRINT(solar);
-      LOG_PRINT(hauteurNeige);
-      LOG_PRINT(temperatureHN);
+
+      if (!disabled.veml77stv) {
+        LOG_PRINT(solar);
+      } else if (!disabled.luminomdb) {
+        LOG_PRINT(solarMdb);
+      } else LOG_PRINT("na");  //na = not avialable
+
+      if (!disabled.hneige) {
+        LOG_PRINT(hauteurNeige);
+        LOG_PRINT(temperatureHN);
+      } else {
+        LOG_PRINT("na");LOG_PRINT("na");
+      }
       logFile.print(latitude, 6);       logFile.print(",");
       DEBUG_PRINT_DEC(latitude, 6);     DEBUG_PRINT(",");
       logFile.print(longitude, 6);      logFile.print(",");
@@ -176,7 +194,7 @@ void logData()
       LOG_PRINT(timer.readBme280Ext);
       LOG_PRINT(timer.readBme280Int);
       LOG_PRINT(timer.readLsm303);
-      LOG_PRINT(timer.readVeml7700);
+      //Inutilsé LOG_PRINT(timer.readVeml7700);
       //LOG_PRINT(timer.readHmp60);
       //LOG_PRINT(timer.read5103L);
       //LOG_PRINT(timer.readSp212);

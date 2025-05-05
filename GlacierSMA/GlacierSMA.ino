@@ -27,6 +27,8 @@
     - Sketch uses 98720 bytes (37%) of program storage space. Maximum is 262144 bytes.
     - Power consumption in deep sleep is ~625 uA at 12.5V
 
+    - 5 mai 2025 - Yh : integration du code pour support de 2 instruments modbus via le bridgeI2C: bme280 et lumino SEN0644
+
 */
 
 // ----------------------------------------------------------------------------
@@ -41,20 +43,20 @@
 #include <IridiumSBD.h>             // https://github.com/sparkfun/SparkFun_IridiumSBD_I2C_Arduino_Library (v3.0.6)
 #include <RTCZero.h>                // https://github.com/arduino-libraries/RTCZero (v1.6.0)
 #include <SdFat.h>                  // https://github.com/greiman/SdFat (v2.1.2)
-#include <sensirion.h>              // https://github.com/HydroSense/sensirion
+//Inutilsé /#include <sensirion.h>              // https://github.com/HydroSense/sensirion
 #include <Statistic.h>              // https://github.com/RobTillaart/Statistic (v1.0.0)
 #include <TimeLib.h>                // https://github.com/PaulStoffregen/Time (v1.6.1)
 #include <TinyGPS++.h>              // https://github.com/mikalhart/TinyGPSPlus (v1.0.3)
 #include <Wire.h>                   // https://www.arduino.cc/en/Reference/Wire
 #include <wiring_private.h>         // Required for creating new Serial instance
-#include "src/Adafruit_VEML7700.h"  // Patched version of Adafruit VEML7700 library
+//Inutilsé #include "src/Adafruit_VEML7700.h"  // Patched version of Adafruit VEML7700 library
 
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
-#define __VERSION "5.3.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.0.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -64,7 +66,7 @@
 // ----------------------------------------------------------------------------
 // Debugging macros
 // ----------------------------------------------------------------------------
-#define DEBUG           false // Output debug messages to Serial Monitor
+#define DEBUG           true // Output debug messages to Serial Monitor
 #define DEBUG_GNSS      false // Output GNSS debug information
 #define DEBUG_IRIDIUM   false // Output Iridium debug messages to Serial Monitor
 #define NO_TRANSMIT     false // Prevent sending satellite messages
@@ -98,21 +100,21 @@
 #define BME280_EXT_ADDR     BME280_ADDRESS            // Defined in Adafruit Library = 0x77 - Used for the outside sensor.
 #define BME280_INT_ADDR     BME280_ADDRESS_ALTERNATE  // Defined in Adafruit Library = 0x76 - Used for the inside sensor.
 #define BRIDGE_SENSOR_SLAVE_ADDR 0x66                 // WindSensor module I2C address declaration
-#define VEML_ADDR           0x10 // According to datasheet page 6 (https://www.vishay.com/docs/84286/veml7700.pdf)
+//#define VEML_ADDR           0x10 // According to datasheet page 6 (https://www.vishay.com/docs/84286/veml7700.pdf)
 
 // ----------------------------------------------------------------------------
 // Pin definitions
 // ----------------------------------------------------------------------------
 #define PIN_VBAT            A0
-#define PIN_WIND_SPEED      A1  // Used by Young 5103L and Davis 7911
-#define PIN_WIND_DIR        A2  // Used by Young 5103L and Davis 7911
-#define PIN_HUMID           A3  // Used by HMP60 module
-#define PIN_TEMP            A4  // Used by HMP60 module
+//Inutilsé #define PIN_WIND_SPEED      A1  // Used by Young 5103L and Davis 7911
+//Inutilsé #define PIN_WIND_DIR        A2  // Used by Young 5103L and Davis 7911
+//Inutilsé #define PIN_HUMID           A3  // Used by HMP60 module
+//Inutilsé #define PIN_TEMP            A4  // Used by HMP60 module
 #define PIN_GNSS_EN         A5
 #define PIN_MICROSD_CS      4
 #define PIN_12V_EN          5   // 12 V step-up/down regulator
 #define PIN_5V_EN           6   // 5V step-down regulator
-#define PIN_MICROSD_CD      7   // Detects if the microSD card is present (currently unused)
+//Inutilsé #define PIN_MICROSD_CD      7   // Detects if the microSD card is present (currently unused)
 #define PIN_LED_GREEN       8   // Green LED
 #define PIN_IRIDIUM_RX      10  // Pin 1 RXD (Yellow)
 #define PIN_IRIDIUM_TX      11  // Pin 6 TXD (Orange)
@@ -120,8 +122,8 @@
 #define PIN_LED_RED         13
 
 // Unused
-#define PIN_SOLAR           7   // Used by SP212
-#define PIN_SENSOR_PWR      7   // Used by Davis 7911
+//Inutilsé #define PIN_SOLAR           7   // Used by SP212
+//Inutilsé #define PIN_SENSOR_PWR      7   // Used by Davis 7911
 #define PIN_RFM95_CS        7   // LoRa "B"
 #define PIN_RFM95_RST       7   // LoRa "A"
 #define PIN_RFM95_INT       7   // LoRa "D"
@@ -148,7 +150,7 @@ void SERCOM1_Handler()
 // ----------------------------------------------------------------------------
 // Object instantiations
 // ----------------------------------------------------------------------------
-Adafruit_BME280                 bme280Ext;
+//Inutilsé Adafruit_BME280                 bme280Ext;
 Adafruit_BME280                 bme280Int;
 //Adafruit_VEML7700               veml = Adafruit_VEML7700(); // Initialized when read because it leaks memory if not destroyed after reading.
 Adafruit_LSM303_Accel_Unified   lsm303 = Adafruit_LSM303_Accel_Unified(54321); // I2C address: 0x1E
@@ -157,7 +159,7 @@ RTCZero                         rtc;
 SdFs                            sd;           // File system object
 FsFile                          logFile;      // Log file
 TinyGPSPlus                     gnss;
-sensirion                       sht(20, 21);  // (data, clock). Pull-up required on data pin
+//Inutilsé sensirion                       sht(20, 21);  // (data, clock). Pull-up required on data pin
 
 // Custom TinyGPS objects to store fix and validity information
 // Note: $GPGGA and $GPRMC sentences produced by GPS receivers (PA6H module)
@@ -177,15 +179,18 @@ StatisticCAL pressureExtStats;     // Pressure from external sensor
 StatisticCAL temperatureExtStats;  // Temperature from external sensor
 StatisticCAL humidityExtStats;     // Humidity from external sensor
 
-Statistic tempBMEMdb;           // Temperature from BME280 Modbus
-Statistic humBMEMdb;            // Humidity from BME280 Modbus
-Statistic presBMEMdb;           // Atmosph Pressure from BME280 Modbus
+StatisticCAL tempBMEMdbStats;      // Temperature from BME280 Modbus
+StatisticCAL humBMEMdbStats;       // Humidity from BME280 Modbus
+StatisticCAL presBMEMdbStats;      // Atmosph Pressure from BME280 Modbus
+
+StatisticCAL luminoMdbStats;            //Mesure lumonisite capteur modbus
 
 StatisticCAL solarStats;           // Solar radiation
 StatisticCAL hauteurNeigeStats;    // Suivi hauteur de neige
 StatisticCAL windSpeedStats;       // Wind speed
 StatisticCAL uStats;               // Wind east-west wind vector component (u)
 StatisticCAL vStats;               // Wind north-south wind vector component (v)
+StatisticCAL temphneigeStats;      // Temperature capteur hauteur de neige
 
 // ----------------------------------------------------------------------------
 // User defined configuration variables
@@ -233,9 +238,13 @@ float tempBmeINT_Offset         = 0.0;      // Offset for interior temperature a
 float humImeINT_CF              = 1.0;      // Correction factor for interior humidity acquisition.
 float humBmeINT_Offset          = 0.0;      // Offset for interior humidity acquisition.
 
-//VEML7700
+//VEML7700 - applicable pour le dispositif dans le Stevenson (périphérique Modbus) ou I2C (qu'on utilise plus)
 float veml_CF                   = 22.045;   // Correction factor for light intensity acquisition. Ref: ÉtalonnageVEML7700_H24.xlsx
 float veml_Offset               = -372.06;  // Offset for light intensity acquisition.
+
+//const uint16_t bridgeSettleDelay = 15000; // 15 secondes! oui... pas encore optimisé - Yh - 26 avril 2024
+const uint16_t valeurLimiteHauteurNeige = 4000; // Max acceptable pour la valeur de mesure hauteur de neige
+const float facteurMultLumino = 3800.0; // Facteur d'échelonnage lors de la conversion à un 16bits (encodage) pour mettre dans le registre
 
 // ----------------------------------------------------------------------------
 // Error codes and values
@@ -291,6 +300,7 @@ float         pressureBMEMdb    = 0.0;    // Presion atmosph selon cpateur BME28
 float         pitch             = 0.0;    // Pitch (°)
 float         roll              = 0.0;    // Roll (°)
 float         solar             = 0.0;    // Solar radiation (lx)
+float         solarMdb          = 0.0;    // Solar radiation from modbus sensor
 float         hauteurNeige      = 0.0;    // Mesure de la hauteur de neige, en mm
 float         temperatureHN     = 0.0;    // Temperature au moment de la mesure de la hauteur de neige (en C, 1C pres)
 float         windSpeed         = 0.0;    // Wind speed (m/s)
@@ -311,7 +321,7 @@ uint16_t      lastBMEMdbErrCode = 0;      // last err code du BME280 Modbus
 // ----------------------------------------------------------------------------
 
 // DFRWindSensor (CAL) struc to store/retreive data
-const int regMemoryMapSize = 17;
+const int regMemoryMapSize = 16;
 union sensorsDataRaw {
   struct {
     uint16_t angleVentReg = 0; // direction vent en degrés (0-360)
@@ -328,6 +338,8 @@ union sensorsDataRaw {
     uint16_t humBMEMdb    = 0; // Humidité du BME280 modbus
     uint16_t presBMEMdb   = 0; // Pression du BME280 modbus
     uint16_t BMEMdbErr    = 0; // Code d'erreur de lecture du BME280 modbus
+    uint16_t luminoMdb    = 0; // Luminosité du capteur SEN0644 modbus
+    uint16_t luminoMdbErr = 0; //code d'erreur modbus du capteur SEN0644
   } __attribute__((packed));
   uint16_t regMemoryMap[regMemoryMapSize];
 };
@@ -348,6 +360,8 @@ struct sensorsData {
   float humBMEMdb = 0.0;                 //v0.9
   float presBMEMdb = 0.0;                //v0.9
   uint8_t BMEMdbErr = 0;                 //v0.9 0=success
+  float luminomdbAmbExt = 0.0;           //v0.11
+  uint8_t luminomdbErr = 0;              //v0.11
 };
 
 // Union to store Iridium Short Burst Data (SBD) Mobile Originated (MO) messages
@@ -363,7 +377,10 @@ typedef union
     uint16_t  humidityExt;        // External humidity (%)          (2 bytes)   * 100
     int16_t   pitch;              // Pitch (°)                      (2 bytes)   * 100
     int16_t   roll;               // Roll (°)                       (2 bytes)   * 100
+
+    //5 mai 2025: vraiment inutile d'utiliser un 32bits *10k pour la luminosité: 4% trop cher pour nous.
     uint32_t  solar;              // Solar illuminance (lx)         (4 bytes)   * 10000
+
     uint16_t  windSpeed;          // Mean wind speed (m/s)          (2 bytes)   * 100
     uint16_t  windDirection;      // Mean wind direction (°)        (2 bytes)	  * 10
     uint16_t  windGustSpeed;      // Wind gust speed (m/s)          (2 bytes)   * 100
@@ -373,8 +390,11 @@ typedef union
     uint8_t   satellites;         // # of satellites                (1 byte)
     uint16_t  hauteurNeige;       // Hauteur de neige (mm)          (2 bytes)   * 1
     uint16_t  voltage;            // Battery voltage (V)            (2 bytes)   * 100
+
+    //5 mai 2025: est-ce utile? on pourrait récupérer pour des infos d'état/erreur des capteurs
     uint16_t  transmitDuration;   // Previous transmission duration (2 bytes)
     uint8_t   transmitStatus;     // Iridium return code            (1 byte)
+
     uint16_t  iterationCounter;   // Message counter                (2 bytes)
   } __attribute__((packed));                              // Total: (48 bytes)
   uint8_t bytes[48];
@@ -412,17 +432,16 @@ struct struct_online
   bool bme280Int = 0;
   bool lsm303   = 0;
   bool veml7700 = 1; // Derrière le bridge RS-485
-  bool hmp60    = 1; //TODO Retirer
-  bool sht31    = 1; //TODO Retirer
-  bool wm5103L  = 1; //TODO Retirer
-  bool di7911   = 1; //TODO Retirer
-  bool sp212    = 1; //TODO Retirer
-  bool bridge   = 0; // Est le bridge RS-485 (TODO: Renommer)
+//[... retirés: hmp60, sht31, wm5103L, di7911, sp212]
+  bool bridge   = 0; // bridge I2C RS-485 
   bool gnss     = 0;
   bool iridium  = 0;
   bool microSd  = 0;
   bool hneige   = 1;
+  bool bme280stv = 0; //Présence du Stevenson intégrant le BME280
+  bool veml77stv = 0; //Présence du Stevenson intégrant le VEML7700
   bool bme280mdb = 1;
+  bool luminomdb = 1;
 } disabled, online;
 
 // Structure to store function timers
@@ -433,12 +452,8 @@ struct struct_timer
   unsigned long readBme280Ext;
   unsigned long readBme280Int;
   unsigned long readLsm303;
-  unsigned long readVeml7700;
-  unsigned long readHmp60;
-  unsigned long readSht31;
-  unsigned long read5103L;
-  unsigned long read7911;
-  unsigned long readSp212;
+//  unsigned long readVeml7700;
+//[... retirés: hmp60, sht31, wm5103L, di7911, sp212]
   unsigned long readBridge;
   unsigned long readGnss;
   unsigned long writeMicroSd;
@@ -453,14 +468,14 @@ void setup()
   // Pin assignments
   pinMode(PIN_LED_GREEN, OUTPUT);
   pinMode(PIN_LED_RED, OUTPUT);
-  pinMode(PIN_SENSOR_PWR, OUTPUT);
+  //Inutilsé pinMode(PIN_SENSOR_PWR, OUTPUT);
   pinMode(PIN_5V_EN, OUTPUT);
   pinMode(PIN_12V_EN, OUTPUT);
   pinMode(PIN_GNSS_EN, OUTPUT);
   pinMode(PIN_VBAT, INPUT);
   digitalWrite(PIN_LED_GREEN, LOW);   // Disable green LED
   digitalWrite(PIN_LED_RED, LOW);     // Disable red LED
-  digitalWrite(PIN_SENSOR_PWR, LOW);  // Disable power to 3.3V
+  //Inutilsé digitalWrite(PIN_SENSOR_PWR, LOW);  // Disable power to 3.3V
   digitalWrite(PIN_5V_EN, LOW);       // Disable power to Iridium 9603
   digitalWrite(PIN_12V_EN, LOW);      // Disable 12V power
   digitalWrite(PIN_GNSS_EN, HIGH);    // Disable power to GNSS
@@ -618,11 +633,12 @@ void loop()
       enable5V();         // Enable 5V power
       enable12V();        // Enable 12V power
 
+//Au 5 mai 2025 - Yh : il n'y a plus de BME280 Externe sur le I2C directement
       // Perform measurements
-      if (disabled.bme280Ext)
-        DEBUG_PRINTLN("Info - BME280 Ext disabled");
-      else
-        readBme280Ext();     // Read temperature and humidty sensor (external)
+      // if (disabled.bme280Ext)
+      //   DEBUG_PRINTLN("Info - BME280 Ext disabled");
+      // else
+      //   readBme280Ext();     // Read temperature and humidty sensor (external)
 
       if (disabled.bme280Int)
         DEBUG_PRINTLN("Info - BME280 Int disabled");
@@ -634,10 +650,11 @@ void loop()
       else
         readLsm303();     // Read accelerometer
 
-      if (disabled.veml7700)
-        DEBUG_PRINTLN("Info - VEMLM7700 disabled");
-      else
-        readVeml7700();
+//Au 5 mai 2025 - Yh : il n'y a plus de VEML7700 sur le I2C directement
+      // if (disabled.veml7700)
+      //   DEBUG_PRINTLN("Info - VEMLM7700 disabled");
+      // else
+      //   readVeml7700();
 
       if (disabled.bridge)
         DEBUG_PRINTLN("Info - Bridge disabled");
