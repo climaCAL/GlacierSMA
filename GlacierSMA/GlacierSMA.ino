@@ -54,9 +54,9 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "P05_Cegep"
+#define CRYOLOGGER_ID "P04_Cegep"
 
-#define __VERSION "6.1.1"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.1.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -449,10 +449,10 @@ struct struct_online
   bool iridium  = 0;
   bool microSd  = 0;
   bool hneige   = 1;
-  bool bme280stv = 0; //Présence du Stevenson intégrant le BME280
-  bool veml77stv = 0; //Présence du Stevenson intégrant le VEML7700
-  bool bme280mdb = 1;
-  bool luminomdb = 1;
+  bool bme280stv = 1; //Présence du Stevenson intégrant le BME280
+  bool veml77stv = 1; //Présence du Stevenson intégrant le VEML7700
+  bool bme280mdb = 0;
+  bool luminomdb = 0;
 } disabled, online;
 
 // Structure to store function timers
