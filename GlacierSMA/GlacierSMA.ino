@@ -56,7 +56,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P05_Cegep"
 
-#define __VERSION "6.0.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.1.1"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -195,9 +195,20 @@ StatisticCAL temphneigeStats;      // Temperature capteur hauteur de neige
 // ----------------------------------------------------------------------------
 // User defined configuration variables
 // ----------------------------------------------------------------------------
+// fonctionnalité introduite v6.11.1 permettant d'envoyer pendant les 4 premiers cycles à une fréquence plus élevée
+// puis au-delà de icCountLimit, reprendre la configuration du mode normal. Consulter l'implémentation dans la fonction goToSleep, 04_power.ino
+// Dans un futur, les variables pourront être configurables (avec une mémoire), raison que non const.
+bool                stageTwoActivation        = true;   //spécifie si l'on désire utiliser cette fonctionnalité.
+int                 icCountLimit              = 4;      //Compte de iterationCounter après lequel aller en mode normal, 4 est un choix arbitraire
+bool                stageTwo                  = false;  //mode actif seulement après firstTimeFlag
+const unsigned long stageTwoSampleInterval    = 5;      //Configuration de sampleInterval pendant le stageTwo
+const unsigned int  stageTwoAverageInterval   = 3;      //Configuration de averageInterval pendant le stageTwo
+unsigned long       normalRunSampleInterval   = 1;      //Lors de setup, obtiendra la valeur de sampleInterval
+unsigned int        normalRunAverageInterval  = 1;      //Lors de setup, obtiendra la valeur de averageInterval
+
 #if DEBUG
 unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
-unsigned int  averageInterval   = 3;      // Number of samples to be averaged in each message. Default: 12 (hourly)
+unsigned int  averageInterval   = 12;      // Number of samples to be averaged in each message. Default: 12 (hourly)
 unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
 unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
 const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
@@ -564,6 +575,10 @@ void setup()
     digitalWrite(PIN_LED_GREEN, !digitalRead(PIN_LED_GREEN));
     myDelay(250);
   }
+
+  //Conserver une copie la configuration "normale":
+  normalRunSampleInterval   = sampleInterval;      //configuration en mode "normal", après stageTwo
+  normalRunAverageInterval  = averageInterval;
 }
 
 // ----------------------------------------------------------------------------
