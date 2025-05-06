@@ -56,7 +56,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P04_Cegep"
 
-#define __VERSION "6.1.4"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.1.5"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -345,8 +345,8 @@ union sensorsDataRaw {
     uint16_t presExtReg   = 0; // pression du BME280 dans le Stevenson
     uint16_t luminoReg    = 0; // Luminosite du VEML7700 dans le Stevenson
     uint16_t stvsnErrReg  = 0; // Status des lectures du Stevenson
-    uint16_t tempBMEMdb   = 0; // Temperature du BME280 modbus
-    uint16_t humBMEMdb    = 0; // Humidité du BME280 modbus
+    uint16_t humBMEMdb    = 0; // Humidité du BME280 modbus (attention à l'ordre)
+    uint16_t tempBMEMdb   = 0; // Temperature du BME280 modbus (attention à l'ordre)
     uint16_t presBMEMdb   = 0; // Pression du BME280 modbus
     uint16_t BMEMdbErr    = 0; // Code d'erreur de lecture du BME280 modbus
     uint16_t luminoMdb    = 0; // Luminosité du capteur SEN0644 modbus
@@ -671,7 +671,7 @@ void loop()
       // else
       //   readVeml7700();
 
-      if (disabled.bridge)
+      if (disabled.bridgeData)
         DEBUG_PRINTLN("Info - Bridge disabled");
       else {
         //Yh - 24 avril 2025: collecter le data du bridgeI2C ssi on a tout ok. Remplace de grand délais de 15sec, on a jusqu'à 4 (arbitraire) itérations/essais
