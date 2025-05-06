@@ -56,7 +56,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P04_Cegep"
 
-#define __VERSION "6.1.3"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.1.4"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -444,7 +444,7 @@ struct struct_online
   bool lsm303   = 0;
   bool veml7700 = 1; // Derrière le bridge RS-485
 //[... retirés: hmp60, sht31, wm5103L, di7911, sp212]
-  bool bridge   = 0; // bridge I2C RS-485 
+  bool bridgeData = 0; // bridge I2C RS-485 
   bool gnss     = 0;
   bool iridium  = 0;
   bool microSd  = 0;

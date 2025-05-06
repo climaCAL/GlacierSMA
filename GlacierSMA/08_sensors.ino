@@ -659,7 +659,7 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
 
   if (!scanI2CbusFor(BRIDGE_SENSOR_SLAVE_ADDR, 1)) {
     DEBUG_PRINTLN("failed!");
-    online.bridge = false;
+    online.bridgeData = false;
     timer.readBridge += millis() - loopStartTime; // Update the loop timer anyway
     return false;
   }
@@ -676,12 +676,12 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
   bool allZeros = true;
   if (len == 0) {
     DEBUG_PRINTLN("failed!");
-    online.bridge = false;
+    online.bridgeData = false;
     timer.readBridge += millis() - loopStartTime; // Update the loop timer anyway
     return false;
   }
   else {
-    online.bridge = true;
+    online.bridgeData = true;
     
     for (int i = 0; i < len/2 && Wire.available() >= 2; i++) { //TODO I'm 99% sure the Wire.available() is redundant but I'll confirm later.
       uint8_t LSB = Wire.read();

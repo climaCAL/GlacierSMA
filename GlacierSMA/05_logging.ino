@@ -121,8 +121,7 @@ void logData()
   // Check if microSD is online
   if (!online.microSd) {
     DEBUG_PRINTLN(F("Warning - Logging failed since microSD is offline!"));
-  }
-  else {
+  } else {
     // Check if a new log file should be created
     if (newLogFile() != currentLogFile) {
       createLogFile();
@@ -183,7 +182,7 @@ void logData()
       LOG_PRINT(online.bme280Int);
       LOG_PRINT(online.lsm303);
       LOG_PRINT(online.veml7700);
-      LOG_PRINT(online.bridge);
+      LOG_PRINT(online.bridgeData);
       LOG_PRINT(online.gnss);
       LOG_PRINT(online.microSd);
       LOG_PRINT(online.iridium);
