@@ -54,7 +54,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "P04_Cegep"
+#define CRYOLOGGER_ID "P007"
 
 #define __VERSION "6.1.5"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
@@ -66,7 +66,7 @@
 // ----------------------------------------------------------------------------
 // Debugging macros
 // ----------------------------------------------------------------------------
-#define DEBUG           true // Output debug messages to Serial Monitor
+#define DEBUG           false // Output debug messages to Serial Monitor
 #define DEBUG_GNSS      false // Output GNSS debug information
 #define DEBUG_IRIDIUM   false // Output Iridium debug messages to Serial Monitor
 #define NO_TRANSMIT     false // Prevent sending satellite messages
