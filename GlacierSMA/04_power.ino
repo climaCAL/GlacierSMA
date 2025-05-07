@@ -101,9 +101,28 @@ void prepareForSleep()
 void goToSleep()
 {
   // Clear first-time flag after initial power-down
+  // Yh 27 avril 2025 - Nouvelle fonctionnalité permettant d'envoyer pendant les 4 premier cycles à une fréquence plus élevée
+  //                    puis au-delà de 4, reprendre la configuration du mode normal. Typiquement, après un démarrage, la
+  //                    station envoie aux 15 minutes (3x5mn), après 1h, elle se met en mode 1h/hr.
+  // variables requises: const bool stageTwoActive, bool stageTwo, const normalRunSampleInterval, const normalRunAverageInterval
+  // stageTwoActive: spécifie si l'on désire utiliser cette fonctionnalité. stageTwo: est actif seulement après firsTimeFlag
   if (firstTimeFlag)
   {
     firstTimeFlag = false;
+    firstTimeFlag = false;
+    if (stageTwoActivation) { //Doit-on activer le stageTwo?
+      stageTwo = true;
+      sampleInterval    = stageTwoSampleInterval;
+      averageInterval   = stageTwoAverageInterval;
+    }  //Sinon, sampleInterval et averagInterval restent à leur valeur configurée
+  }
+  if (stageTwo && stageTwoActivation) {
+    //Est-ce que l'on a atteint ne nombre d'itération signat la fin du stageTwo?
+    if (iterationCounter >= icCountLimit) {  
+      stageTwo = false;
+      sampleInterval    = normalRunSampleInterval;
+      averageInterval   = normalRunAverageInterval;
+    }
   }
 
   // Enter deep sleep

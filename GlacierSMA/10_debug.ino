@@ -54,7 +54,7 @@ void printTimers()
   DEBUG_PRINT("readBme280Ext: ");   printTab(1);  DEBUG_PRINTLN(timer.readBme280Ext);
   DEBUG_PRINT("readBme280Int: ");   printTab(1);  DEBUG_PRINTLN(timer.readBme280Int);
   DEBUG_PRINT("readLsm303: ");      printTab(1);  DEBUG_PRINTLN(timer.readLsm303);
-  DEBUG_PRINT("readVeml7700: ");    printTab(1);  DEBUG_PRINTLN(timer.readVeml7700);
+  //Inutilsé DEBUG_PRINT("readVeml7700: ");    printTab(1);  DEBUG_PRINTLN(timer.readVeml7700);
   //DEBUG_PRINT("readHmp60: ");       printTab(1);  DEBUG_PRINTLN(timer.readHmp60);
   //DEBUG_PRINT("readSht31: ");       printTab(1);  DEBUG_PRINTLN(timer.readSht31);
   //DEBUG_PRINT("read5103L: ");       printTab(1);  DEBUG_PRINTLN(timer.read5103L);
