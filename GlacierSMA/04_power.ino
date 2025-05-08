@@ -91,10 +91,10 @@ void prepareForSleep()
   disableSerial();
 
   // Clear online union
-  memset(&online, 0, sizeof(online));
+  online = {};
 
   // Clear timer union
-  memset(&timer, 0, sizeof(timer));
+  timer = {};
 }
 
 // Enter deep sleep

@@ -106,7 +106,7 @@ byte newLogFile() {
 }
 
 //TODO This really shouldn't be a macro but instead a template function, but it'll do for now...
-#define LOG_PRINT(data) logFile.print(data); logFile.print(','); DEBUG_PRINT(data); DEBUG_PRINT(',');
+#define LOG_PRINT(data) { logFile.print(data); logFile.print(','); DEBUG_PRINT(data); DEBUG_PRINT(','); }
 
 // Write data to log file
 void logData()

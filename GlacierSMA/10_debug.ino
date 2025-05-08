@@ -122,7 +122,7 @@ void printMoSbdHex()
   printLine();
   char tempData[16];
   DEBUG_PRINTLN("Byte\tHex");
-  for (int i = 0; i < sizeof(moSbdMessage); ++i)
+  for (unsigned i = 0; i < sizeof(moSbdMessage); ++i)
   {
     sprintf(tempData, "%d\t0x%02X", i, moSbdMessage.bytes[i]);
     DEBUG_PRINTLN(tempData);
@@ -138,7 +138,7 @@ void printMoSbdBuffer()
   printLine();
   char tempData[16];
   DEBUG_PRINTLN("Byte\tHex");
-  for (int i = 0; i < moSbdBufferSize; ++i)
+  for (unsigned i = 0; i < moSbdBufferSize; ++i)
   {
     sprintf(tempData, "%d\t0x%02X", i, moSbdBuffer[i]);
     DEBUG_PRINTLN(tempData);
@@ -154,7 +154,7 @@ void printMtSbdBuffer()
   // Print contents of mtSbdBuffer in hexadecimal
   char tempData[16];
   DEBUG_PRINTLN("Byte\tHex");
-  for (int i = 0; i < mtSbdBufferSize; ++i)
+  for (unsigned i = 0; i < mtSbdBufferSize; ++i)
   {
     sprintf(tempData, "%d\t0x%02X", i, mtSbdBuffer[i]);
     DEBUG_PRINTLN(tempData);

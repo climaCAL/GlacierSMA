@@ -70,7 +70,7 @@ void setRtcAlarm()
 
     // Update alarm time based on current time + sample interval so it is guaranteed to be in the future;
     // This is basically akin to resetting the sample cycle so it starts "fresh" from the current time.
-    alarmTime = currentTime + min(sampleInterval * 60, 3600); // Max 1 hour since we match MM:SS
+    alarmTime = currentTime + min(sampleInterval * 60, 3600u); // Max 1 hour since we match MM:SS
   }
 
   // Check if alarm is set a little in the past or less than 5 seconds from now;
@@ -97,7 +97,7 @@ void setRtcAlarm()
 void setCutoffAlarm() //FIXME Is this function really necessary? Why not reuse setRtcAlarm() with a parameter?
 {
   // Set next alarm at a "whole" minute, guaranteed to be in the future
-  alarmTime = rtc.getEpoch() + min(sampleInterval * 60, 3600); // Max 1 hour since we match MM:SS
+  alarmTime = rtc.getEpoch() + min(sampleInterval * 60, 3600u); // Max 1 hour since we match MM:SS
   rtc.setAlarmTime(hour(alarmTime), minute(alarmTime), 0); // hours, minutes, seconds
 
   // Enable alarm (matching hours, minutes and seconds)
@@ -134,7 +134,7 @@ void printDateTime(char* printBuffer)
 
 void printDateTime()
 {
-  char dateTimeBuffer[20];
+  char dateTimeBuffer[26];
   printDateTime(dateTimeBuffer);
   DEBUG_PRINTLN(dateTimeBuffer);
 }
@@ -142,7 +142,7 @@ void printDateTime()
 // Print the RTC alarm
 void printAlarm()
 {
-  char alarmBuffer[20];
+  char alarmBuffer[26];
   sprintf(alarmBuffer, "20%02d-%02d-%02dT%02d:%02d:%02d",
           rtc.getAlarmYear(), rtc.getAlarmMonth(), rtc.getAlarmDay(),
           rtc.getAlarmHours(), rtc.getAlarmMinutes(), rtc.getAlarmSeconds());

@@ -28,7 +28,6 @@
     - Power consumption in deep sleep is ~625 uA at 12.5V
 
     - 5 mai 2025 - Yh : integration du code pour support de 2 instruments modbus via le bridgeI2C: bme280 et lumino SEN0644
-
 */
 
 // ----------------------------------------------------------------------------
@@ -54,9 +53,9 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "P007"
+#define CRYOLOGGER_ID "P011"
 
-#define __VERSION "6.1.5"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define __VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -199,7 +198,7 @@ StatisticCAL temphneigeStats;      // Temperature capteur hauteur de neige
 // puis au-delà de icCountLimit, reprendre la configuration du mode normal. Consulter l'implémentation dans la fonction goToSleep, 04_power.ino
 // Dans un futur, les variables pourront être configurables (avec une mémoire), raison que non const.
 bool                stageTwoActivation        = true;   //spécifie si l'on désire utiliser cette fonctionnalité.
-int                 icCountLimit              = 4;      //Compte de iterationCounter après lequel aller en mode normal, 4 est un choix arbitraire
+unsigned int        icCountLimit              = 4;      //Compte de iterationCounter après lequel aller en mode normal, 4 est un choix arbitraire
 bool                stageTwo                  = false;  //mode actif seulement après firstTimeFlag
 const unsigned long stageTwoSampleInterval    = 5;      //Configuration de sampleInterval pendant le stageTwo
 const unsigned int  stageTwoAverageInterval   = 3;      //Configuration de averageInterval pendant le stageTwo
@@ -273,8 +272,8 @@ const uint16_t HN_ERRORVAL   = 0xFFFF;   //Hauteur de neige
 // ----------------------------------------------------------------------------
 volatile bool alarmFlag         = false;  // Flag for alarm interrupt service routine
 volatile bool wdtFlag           = false;  // Flag for Watchdog Timer interrupt service routine
-volatile int  wdtCounter        = 0;      // Watchdog Timer interrupt counter
-volatile int  revolutions       = 0;      // Wind speed ISR counter
+volatile unsigned int wdtCounter = 0;     // Watchdog Timer interrupt counter
+volatile unsigned int revolutions = 0;    // Wind speed ISR counter
 bool          firstTimeFlag     = true;   // Flag to determine if program is running for the first time
 bool          gnssSyncSuccess   = false;  //Flag pour indiquer que le GNSS est parvenu a synchroniser
 bool          resetFlag         = false;  // Flag to force system reset using Watchdog Timer

@@ -11,7 +11,7 @@ bool scanI2CbusFor(uint8_t address, unsigned int recheck = 0, unsigned int retry
   while ((error == 0 && recheck-- > 0) || (error != 0 && retry-- > 0)) { 
     myDelay(delay);
     Wire.beginTransmission(address);
-    if (error = Wire.endTransmission()) {
+    if ((error = Wire.endTransmission())) {
       DEBUG_PRINT("[Error "); DEBUG_PRINT(error); DEBUG_PRINT("] ");
       delay *= 2; // Progressively increase the delay in case of failed transmissions.
     }
