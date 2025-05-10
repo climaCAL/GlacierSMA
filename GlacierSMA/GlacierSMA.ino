@@ -55,7 +55,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "P011"
 
-#define __VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -65,7 +65,7 @@
 // ----------------------------------------------------------------------------
 // Debugging macros
 // ----------------------------------------------------------------------------
-#define DEBUG           false // Output debug messages to Serial Monitor
+#define DEBUG           true  // Output debug messages to Serial Monitor
 #define DEBUG_GNSS      false // Output GNSS debug information
 #define DEBUG_IRIDIUM   false // Output Iridium debug messages to Serial Monitor
 #define NO_TRANSMIT     false // Prevent sending satellite messages
@@ -207,22 +207,23 @@ unsigned int        normalRunAverageInterval  = 1;      //Lors de setup, obtiend
 
 #if DEBUG
 unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
-unsigned int  averageInterval   = 12;      // Number of samples to be averaged in each message. Default: 12 (hourly)
+unsigned int  averageInterval   = 12;     // Number of samples to be averaged in each message. Default: 12 (hourly)
 unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
 unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
 const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
 
-unsigned int  iridiumTimeout    = 120;    // Timeout for Iridium transmission (seconds)
+unsigned int  iridiumTimeout    = 180;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 60;     // Timeout for GNSS signal acquisition (seconds)
-float         batteryCutoff     = 3.0;    // Battery voltage cutoff threshold (V)
-byte          loggingMode       = 3;      // Flag for new log file creation. 1: daily, 2: monthly, 3: yearly
-unsigned int  systemRstWDTCountLimit = 5; // Nombre d'alertes WDT autorisées avant de faire un system Reset (8s par cycle)
+float         batteryCutoff     = 11.0;   // Battery voltage cutoff threshold (V)
+byte          loggingMode       = 2;      // Flag for new log file creation. 1: daily, 2: monthly, 3: yearly
+unsigned int  systemRstWDTCountLimit = 10;// Nombre d'alertes WDT autorisées avant de faire un system Reset (8s par cycle)
 #else
 unsigned int  sampleInterval    = 5;      // Sampling interval (minutes). Default: 5 min (300 seconds)
 unsigned int  averageInterval   = 12;     // Number of samples to be averaged in each message. Default: 12 (hourly)
 unsigned int  transmitInterval  = 1;      // Minimum number of messages in each Iridium transmission (max 340-byte)
 unsigned int  transmitLimit     = 6;      // Maximum number of messages in each Iridium transmission (max 340-byte)
 const size_t  transmitBuffer    = 24;     // Maximum number of messages waiting to be transmitted (min=transmitInterval)
+
 unsigned int  iridiumTimeout    = 240;    // Timeout for Iridium transmission (seconds)
 unsigned int  gnssTimeout       = 120;    // Timeout for GNSS signal acquisition (seconds)
 float         batteryCutoff     = 11.0;   // Battery voltage cutoff threshold (V)
