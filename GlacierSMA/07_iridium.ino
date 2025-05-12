@@ -1,7 +1,7 @@
 // Configure RockBLOCK 9603
 void configureIridium()
 {
-  modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE); // Assume battery power (USB power: IridiumSBD::USB_POWER_PROFILE)
+  modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);     // Assume low power (Battery power: IridiumSBD::DEFAULT_POWER_PROFILE)
   modem.adjustSendReceiveTimeout(iridiumTimeout);           // Timeout for Iridium send/receive commands (default = 300 s)
   modem.adjustStartupTimeout(iridiumTimeout / 2);           // Timeout for Iridium startup (default = 240 s)
 }
@@ -33,13 +33,7 @@ size_t writeMoSbdBuffer() {
 }
 
 // Attempt to transmit data via RockBLOCK 9603
-void transmitData()
-{
-  #if NO_TRANSMIT
-    DEBUG_PRINTLN("Info - Satellite messages inhibited (#NO_TRANSMIT)");
-    return;
-  #endif
-
+void transmitData() {
   // Start loop timer
   unsigned long loopStartTime = millis();
 
@@ -59,13 +53,20 @@ void transmitData()
 
   int returnCode = modem.begin();
 
-  if (returnCode != ISBD_SUCCESS)
+  if (NO_TRANSMIT)
+  {
+    DEBUG_PRINTLN("Info - Satellite messages inhibited (#NO_TRANSMIT)");
+    online.iridium = false;
+  }
+  else if (returnCode != ISBD_SUCCESS)
   {
     online.iridium = false;
-    if (returnCode == ISBD_NO_MODEM_DETECTED) {
+    if (returnCode == ISBD_NO_MODEM_DETECTED)
+    {
       DEBUG_PRINTLN("Warning - No modem detected! Please check wiring.");
     }
-    else {
+    else
+    {
       DEBUG_PRINT("Warning - Modem begin failed with error "); DEBUG_PRINTLN(returnCode);
     }
   }
