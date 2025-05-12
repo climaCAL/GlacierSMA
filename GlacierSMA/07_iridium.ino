@@ -50,12 +50,13 @@ void transmitData() {
   // Wake up the RockBLOCK 9603 and begin communications
   DEBUG_PRINT("Info - Starting iridium modem ("); DEBUG_PRINT(iridiumTimeout/2); DEBUG_PRINTLN("s)...");
   petDog(); // The following might take a while, so best reset the WDT here
-
   int returnCode = modem.begin();
 
   if (NO_TRANSMIT)
   {
     DEBUG_PRINTLN("Info - Satellite messages inhibited (#NO_TRANSMIT)");
+    DEBUG_PRINTLN("Waiting 30s for capacitors to charge...");
+    myDelay(30000);
     online.iridium = false;
   }
   else if (returnCode != ISBD_SUCCESS)
