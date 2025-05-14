@@ -453,7 +453,7 @@ struct struct_online
   bool veml77stv = 1; //Présence du Stevenson intégrant le VEML7700
   bool bme280mdb = 0;
   bool luminomdb = 0;
-} disabled, online;
+} disabled, online = {};
 
 // Structure to store function timers
 struct struct_timer
@@ -463,13 +463,13 @@ struct struct_timer
   unsigned long readBme280Ext;
   unsigned long readBme280Int;
   unsigned long readLsm303;
-//  unsigned long readVeml7700;
+  unsigned long readVeml7700;
 //[... retirés: hmp60, sht31, wm5103L, di7911, sp212]
   unsigned long readBridge;
   unsigned long readGnss;
   unsigned long writeMicroSd;
   unsigned long iridium;
-} timer;
+} timer = {};
 
 // ----------------------------------------------------------------------------
 // Setup
