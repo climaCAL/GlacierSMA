@@ -55,8 +55,8 @@ void transmitData() {
   if (NO_TRANSMIT)
   {
     DEBUG_PRINTLN("Info - Satellite messages inhibited (#NO_TRANSMIT)");
-    DEBUG_PRINTLN("Waiting 30s for capacitors to charge...");
-    myDelay(30000);
+    DEBUG_PRINTLN("Waiting 60s for capacitors to charge...");
+    myDelay(60000);
     online.iridium = false;
   }
   else if (returnCode != ISBD_SUCCESS)

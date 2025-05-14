@@ -53,7 +53,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "P011"
+#define CRYOLOGGER_ID "dbgIridium"
 
 #define VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
@@ -68,7 +68,7 @@
 #define DEBUG           true  // Output debug messages to Serial Monitor
 #define DEBUG_GNSS      false // Output GNSS debug information
 #define DEBUG_IRIDIUM   false // Output Iridium debug messages to Serial Monitor
-#define NO_TRANSMIT     true  // Prevent sending satellite messages
+#define NO_TRANSMIT     false // Prevent sending satellite messages
 #define CALIBRATE       false // Enable sensor calibration code
 
 #if DEBUG
