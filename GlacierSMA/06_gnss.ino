@@ -1,13 +1,13 @@
 // Read GNSS
 void readGnss()
 {
-  // Start loop timer
-  unsigned long loopStartTime = millis();
-
   if (disabled.gnss) {
     DEBUG_PRINTLN(F("Info - GNSS module disabled."));
     return;
   }
+
+  // Start loop timer
+  unsigned long loopStartTime = millis();
 
   // Assume the GNSS module is present until proven otherwise
   online.gnss = true;
