@@ -53,7 +53,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "P011"
+#define CRYOLOGGER_ID "dbgGPS"
 
 #define VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
@@ -445,7 +445,7 @@ struct struct_online
   bool veml7700 = 1; // Derrière le bridge RS-485
 //[... retirés: hmp60, sht31, wm5103L, di7911, sp212]
   bool bridgeData = 0; // bridge I2C RS-485 
-  bool gnss     = 0;
+  bool gnss     = 1;
   bool iridium  = 0;
   bool microSd  = 0;
   bool hneige   = 1;
