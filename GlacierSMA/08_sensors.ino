@@ -1023,7 +1023,7 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
     DEBUG_PRINTF("\tpressureBMEMdb: "); DEBUG_PRINTLN(pressureBMEMdb);
   }
   if (!disabled.veml77stv) {
-  DEBUG_PRINTF("\tluminoAmbExt: "); DEBUG_PRINTLN(solar);
+    DEBUG_PRINTF("\tluminoAmbExt: "); DEBUG_PRINTLN(solar);
   }
   if (!disabled.luminomdb) {
     DEBUG_PRINTF("\tluminoAmbMdbExt: "); DEBUG_PRINTLN(bridgeData.luminomdbAmbExt);
