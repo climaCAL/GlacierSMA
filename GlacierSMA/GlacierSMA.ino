@@ -53,7 +53,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "dbgIridium"
+#define CRYOLOGGER_ID "dbgGPS"
 
 #define VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
