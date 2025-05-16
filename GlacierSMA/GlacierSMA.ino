@@ -55,7 +55,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "dbgIridium"
 
-#define VERSION "6.1.6"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define VERSION "6.2.1"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
