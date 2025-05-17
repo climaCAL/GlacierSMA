@@ -55,7 +55,7 @@
 // ----------------------------------------------------------------------------
 #define CRYOLOGGER_ID "dbgIridium"
 
-#define VERSION "6.2.1"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define VERSION "6.2.2"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
 // ----------------------------------------------------------------------------
 // Data logging
@@ -163,8 +163,8 @@ TinyGPSPlus                     gnss;
 // Custom TinyGPS objects to store fix and validity information
 // Note: $GPGGA and $GPRMC sentences produced by GPS receivers (PA6H module)
 // $GNGGA and $GNRMC sentences produced by GPS/GLONASS receivers (PA161D module)
-TinyGPSCustom gnssFix(gnss, "GPGGA", 6); // Fix quality
-TinyGPSCustom gnssValidity(gnss, "GPRMC", 2); // Validity
+TinyGPSCustom gnssFix(gnss, "GPGGA", 6); // Fix quality  -- Yh 15 mai 2025: GPGGA=PA6H, GNGGA=nouveau (PA1616D)
+TinyGPSCustom gnssValidity(gnss, "GPRMC", 2); // Validity -- Yh 15 mai 2025: GPRMC=PA6H, GNRMC=nouveau (PA1616D)
 
 // ----------------------------------------------------------------------------
 // Statistics objects

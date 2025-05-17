@@ -971,8 +971,10 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
       } else
         bridgeData.luminomdbAmbExt = 0.0;
 
-      solarMdb = bridgeData.luminomdbAmbExt;
-      luminoMdbStats.add(bridgeData.luminomdbAmbExt);
+      if (solarMdb < 200001) {  //Le capteur ne peut excéder 200klux pour sur.
+        solarMdb = bridgeData.luminomdbAmbExt;
+        luminoMdbStats.add(bridgeData.luminomdbAmbExt);
+      } else solarMdb = 0.0;
         
       #if CALIBRATE
           DEBUG_PRINTF(">\tluminosite Mdb: raw="); DEBUG_PRINT(bridgeDataRaw.luminoMdb);
