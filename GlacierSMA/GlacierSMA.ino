@@ -53,7 +53,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "dbgGPS"
+#define CRYOLOGGER_ID "dbgPower"
 
 #define VERSION "6.2.3"  /* 21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental */
 
