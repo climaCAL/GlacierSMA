@@ -62,13 +62,13 @@ void disableGnssPower()
 void enable5V()
 {
   digitalWrite(PIN_5V_EN, HIGH);
-  myDelay(500);
+  //myDelay(500); // TEST: DÉSACTIVÉ
 }
 
 // Disable 5V power
 void disable5V()
 {
-  digitalWrite(PIN_5V_EN, LOW);
+  //digitalWrite(PIN_5V_EN, LOW); // TEST: DÉSACTIVÉ
 }
 
 // Enable 12 V power
