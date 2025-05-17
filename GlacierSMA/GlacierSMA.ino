@@ -201,7 +201,7 @@ bool                stageTwoActivation        = true;   //spécifie si l'on dés
 unsigned int        icCountLimit              = 4;      //Compte de iterationCounter après lequel aller en mode normal, 4 est un choix arbitraire
 bool                stageTwo                  = false;  //mode actif seulement après firstTimeFlag
 const unsigned long stageTwoSampleInterval    = 5;      //Configuration de sampleInterval pendant le stageTwo
-const unsigned int  stageTwoAverageInterval   = 3;      //Configuration de averageInterval pendant le stageTwo
+const unsigned int  stageTwoAverageInterval   = 12;     //Configuration de averageInterval pendant le stageTwo
 unsigned long       normalRunSampleInterval   = 1;      //Lors de setup, obtiendra la valeur de sampleInterval
 unsigned int        normalRunAverageInterval  = 1;      //Lors de setup, obtiendra la valeur de averageInterval
 
@@ -697,7 +697,7 @@ void loop()
         addMoSbdMessage(); // Add collected data to message buffer
 
         // Check if data transmission interval has been reached
-        if ((messageBuffer.size() >= transmitInterval) || firstTimeFlag)
+        if ((messageBuffer.size() >= transmitInterval)) // TEST: DON'T SEND ON FIRST RUN
         {
           // Check for date change
           checkDate();
