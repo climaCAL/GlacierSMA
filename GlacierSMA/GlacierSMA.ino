@@ -53,7 +53,7 @@
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "dbgIridium"
+#define CRYOLOGGER_ID "dbgPower"
 
 #define VERSION "6.2.1"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
 
