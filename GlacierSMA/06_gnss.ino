@@ -38,10 +38,8 @@ void readGnss()
     ISBDCallback();
 
     // Exit loop early if no GNSS data is received after a specified duration
-    if ((millis() - loopStartTime) > 5000 && gnss.charsProcessed() < 10) {
-      online.gnss = false;
+    if ((millis() - loopStartTime) > 5000 && gnss.charsProcessed() < 10)
       break;
-    }
 
     if (!GNSS_PORT.available())
       continue;
@@ -54,22 +52,23 @@ void readGnss()
       continue;
 
     // Check if NMEA sentences have a valid fix and are not stale
-    if (!((gnssFix.value() > 0 && gnssFix.age() < 1000) &&
-        (String(gnssValidity.value()) == "A" && gnssValidity.age() < 1000) &&
-        gnss.satellites.value() > 0))
-      continue;
-
-    fixCounter++; // Increment fix counter
-    DEBUG_PRINT(' '); DEBUG_PRINT(fixCounter);
+    if ((gnss.time.isValid() && gnss.time.age() < 1500)
+        && (gnss.date.isValid() && gnss.date.age() < 1500)
+        && (gnss.location.isValid() && gnss.location.age() < 1500)) {
+      fixCounter++; // Increment fix counter
+      DEBUG_PRINT(' '); DEBUG_PRINT(fixCounter);
+    }
   }
   DEBUG_PRINTLN();
 
   if (fixCounter < 10) {
     gnssSyncSuccess = false;
-    if (online.gnss)
+    if (gnss.charsProcessed() > 0)
       DEBUG_PRINTLN(F("Warning - Insufficient GNSS fixes found before timeout!"));
-    else
+    else {
+      online.gnss = false;
       DEBUG_PRINTLN(F("Warning - No GNSS data received; Please check wiring."));
+    }
     blinkLed(PIN_LED_RED, 5, 100);
   }
   else {
