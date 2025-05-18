@@ -149,7 +149,7 @@ void SERCOM1_Handler()
 // ----------------------------------------------------------------------------
 // Object instantiations
 // ----------------------------------------------------------------------------
-//Inutilsé Adafruit_BME280                 bme280Ext;
+//Inutilisé Adafruit_BME280                 bme280Ext;
 Adafruit_BME280                 bme280Int;
 //Adafruit_VEML7700               veml = Adafruit_VEML7700(); // Initialized when read because it leaks memory if not destroyed after reading.
 Adafruit_LSM303_Accel_Unified   lsm303 = Adafruit_LSM303_Accel_Unified(54321); // I2C address: 0x1E
@@ -158,13 +158,7 @@ RTCZero                         rtc;
 SdFs                            sd;           // File system object
 FsFile                          logFile;      // Log file
 TinyGPSPlus                     gnss;
-//Inutilsé sensirion                       sht(20, 21);  // (data, clock). Pull-up required on data pin
-
-// Custom TinyGPS objects to store fix and validity information
-// Note: $GPGGA and $GPRMC sentences produced by GPS receivers (PA6H module)
-// $GNGGA and $GNRMC sentences produced by GPS/GLONASS receivers (PA161D module)
-TinyGPSCustom gnssFix(gnss, "GPGGA", 6); // Fix quality  -- Yh 15 mai 2025: GPGGA=PA6H, GNGGA=nouveau (PA1616D)
-TinyGPSCustom gnssValidity(gnss, "GPRMC", 2); // Validity -- Yh 15 mai 2025: GPRMC=PA6H, GNRMC=nouveau (PA1616D)
+//Inutilisé sensirion                       sht(20, 21);  // (data, clock). Pull-up required on data pin
 
 // ----------------------------------------------------------------------------
 // Statistics objects
