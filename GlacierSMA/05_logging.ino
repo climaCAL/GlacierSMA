@@ -82,7 +82,7 @@ void createLogFile()
                     "online_microSd,online_iridium,timer_readRtc,timer_readBattery,timer_bme280_ext,timer_bme280_int,"
                     "timer_lsm303,timer_veml7700,timer_bridge,timer_readGnss,timer_writeMicroSd,timer_iridium,"
                     "transmit_status,rtc_drift,free_ram,"
-                    "sampleInterval,averageInterval,transmitInterval,retransmitLimit,gnssTimeout,iridiumTimeout"));
+                    "sampleInterval,averageInterval,transmitInterval,retransmitLimit,gnssTimeout,iridiumTimeout,version"));
 
   // Close log file
   logFile.close();
@@ -221,7 +221,10 @@ void logData()
       LOG_PRINT(transmitInterval);
       LOG_PRINT(transmitLimit);
       LOG_PRINT(gnssTimeout);
-      logFile.println(iridiumTimeout); DEBUG_PRINTLN(iridiumTimeout);
+      LOG_PRINT(iridiumTimeout);
+
+      // Firmware version
+      logFile.println(VERSION); DEBUG_PRINTLN(VERSION);
 
       // Update file access timestamps
       updateFileAccess(&logFile);

@@ -42,20 +42,20 @@
 #include <IridiumSBD.h>             // https://github.com/sparkfun/SparkFun_IridiumSBD_I2C_Arduino_Library (v3.0.6)
 #include <RTCZero.h>                // https://github.com/arduino-libraries/RTCZero (v1.6.0)
 #include <SdFat.h>                  // https://github.com/greiman/SdFat (v2.1.2)
-//Inutilsé /#include <sensirion.h>              // https://github.com/HydroSense/sensirion
+//Inutilisé #include <sensirion.h>              // https://github.com/HydroSense/sensirion
 #include <Statistic.h>              // https://github.com/RobTillaart/Statistic (v1.0.0)
 #include <TimeLib.h>                // https://github.com/PaulStoffregen/Time (v1.6.1)
 #include <TinyGPS++.h>              // https://github.com/mikalhart/TinyGPSPlus (v1.0.3)
 #include <Wire.h>                   // https://www.arduino.cc/en/Reference/Wire
 #include <wiring_private.h>         // Required for creating new Serial instance
-//Inutilsé #include "src/Adafruit_VEML7700.h"  // Patched version of Adafruit VEML7700 library
+//Inutilisé #include "src/Adafruit_VEML7700.h"  // Patched version of Adafruit VEML7700 library
 
 // ----------------------------------------------------------------------------
 // Define unique identifier
 // ----------------------------------------------------------------------------
-#define CRYOLOGGER_ID "dbgIridium"
+#define CRYOLOGGER_ID "P000" /* CHANGEZ-MOI! */
 
-#define VERSION "6.2.2"  //21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental
+#define VERSION "6.2.3"  /* 21mars2025 - Yh intro pour suivi/reference format: major.feature.incremental */
 
 // ----------------------------------------------------------------------------
 // Data logging
