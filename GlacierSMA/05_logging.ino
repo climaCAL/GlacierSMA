@@ -152,9 +152,9 @@ void logData()
         LOG_PRINT(temperatureBMEMdb);
         LOG_PRINT(humidityBMEMdb);      
       } else {
-        LOG_PRINT("na");
-        LOG_PRINT("na");
-        LOG_PRINT("na");
+        LOG_PRINT("");
+        LOG_PRINT("");
+        LOG_PRINT("");
       }
 
       LOG_PRINT(pitch);
@@ -167,14 +167,14 @@ void logData()
       } else if (!disabled.luminomdb) {
         LOG_PRINT(solarMdb);
       } else {
-        LOG_PRINT("na");
+        LOG_PRINT("");
       }
 
       if (!disabled.hneige) {
         LOG_PRINT(hauteurNeige);
         LOG_PRINT(temperatureHN);
       } else {
-        LOG_PRINT("na");
+        LOG_PRINT("");
         LOG_PRINT("na");
       }
 
