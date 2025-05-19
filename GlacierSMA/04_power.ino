@@ -184,7 +184,11 @@ void myDelay(unsigned long ms)
 void forceReset()
 {
   DEBUG_PRINTLN("Info - Forced system reset started");
+  disable12V(); // Disable 12V power
+  disable5V();  // Disable 5V power
   blinkLed(PIN_LED_RED, 4, 500);
-  digitalWrite(PIN_LED_RED, HIGH); // Turn on red LED
+  blinkLed(PIN_LED_RED, 8, 250);
+  blinkLed(PIN_LED_RED, 16, 125);
+  digitalWrite(PIN_LED_RED, HIGH); // Turn on solid red LED
   while (true); // Wait for Watchdog Timer to reset system
 }
