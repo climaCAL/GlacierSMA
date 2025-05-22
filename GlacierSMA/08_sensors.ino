@@ -102,7 +102,8 @@ void configureBme280Int()
 {
   DEBUG_PRINT("Info - Initializing BME280 Int... ");
 
-  if (scanI2CbusFor(BME280_INT_ADDR) && bme280Int.begin(BME280_INT_ADDR))
+  if ((scanI2CbusFor(BME280_INT_ADDR) && bme280Int.begin(BME280_INT_ADDR))
+   || (scanI2CbusFor(BME280_EXT_ADDR) && bme280Int.begin(BME280_EXT_ADDR))) // Le BME interne peut désormais utiliser n'importe quelle adresse.
   {
     online.bme280Int = true;
     DEBUG_PRINTLN("success!");
