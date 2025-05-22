@@ -836,11 +836,11 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
       }
 
       //Recupération de l'information d'état de lecture du périphérique BME280 Modbus:
-      lastBMEMdbErrCode = bridgeDataRaw.BMEMdbErr;  //Ne récupère que la valeur du moment
       bridgeData.BMEMdbErr = (uint8_t)(bridgeDataRaw.BMEMdbErr);   //Yh 24fev2025: Utile?
+      lastBMEMdbErrCode = bridgeData.BMEMdbErr ?: lastBMEMdbErrCode;
       #if CALIBRATE
         DEBUG_PRINTF("\tlastBMEMdbErrCode: ");
-        if (lastBMEMdbErrCode) DEBUG_PRINTF("*ATTN* ");
+        if (lastBMEMdbErrCode) { DEBUG_PRINTF("*ATTN* "); }
         DEBUG_PRINTLN(lastBMEMdbErrCode);
       #endif
     } //end-if disabled.bme280mdb
@@ -852,7 +852,7 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
       DEBUG_PRINTF("\tstvsnErrCode: ");
       DEBUG_PRINTLN(bridgeData.stvsnErrCode);
     } else bridgeData.stvsnErrCode=0;  //y a pas d'erreur avec un stvn que l'on collecte pas!
-    lastStvsnErrCode = lastStvsnErrCode | bridgeData.stvsnErrCode;   // Yh 14nov24: fait un OR pour conserver entre 2 collectes, jusqu'à ce que l'envoie soit fait. Pas parfait, mais on aura l'info que pendant le cycle on a rencontré une erreur.
+    lastStvsnErrCode = bridgeData.stvsnErrCode ?: lastStvsnErrCode; // Conserve l'erreur jusqu'à ce que l'envoie soit fait. Pas parfait, car on aura l'info que pendant le cycle où on a rencontré une erreur.
 
     if (!(bridgeData.stvsnErrCode & STVSN_UNREACHABLE)) {
       if (disabled.bme280stv) { //Veut-on considérer les données du bme280 Stevenson?
@@ -984,8 +984,12 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
           DEBUG_PRINTFLN(" ");
       #endif
 
-      bridgeData.luminoMdbErr = ((uint8_t)bridgeDataRaw.luminoMdbErr);
-      
+      //Recupération de l'information d'état de lecture du périphérique Modbus:
+      bridgeData.luminoMdbErr = (uint8_t)(bridgeDataRaw.luminoMdbErr);   //Yh 24fev2025: Utile?
+      lastLuminoMdbErrCode = bridgeData.luminoMdbErr ?: lastLuminoMdbErrCode;
+      DEBUG_PRINTF("\tlastLuminoMdbErrCode: ");
+      if (lastLuminoMdbErrCode) { DEBUG_PRINTF("*ATTN* "); }
+      DEBUG_PRINTLN(lastLuminoMdbErrCode);
     }//end-if disabled.luminomdb
 
     //--- Fin de la grande section de la récupération des valeurs et validation des codes d'erreurs --------------------------

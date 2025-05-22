@@ -36,19 +36,18 @@ void calculateStats() //FIXME What an awful name for a function that DELETES all
   // Calculate mean wind speed and direction vectors
   windVectors();
 
-  // Clear all statistics objects
-  clearStats();
-
-  // Clear wind gust speed and direction maximums
-  windGustSpeed = 0;
-  windGustDirection = 0;
-  windDirectionSector = 0;
-
   // Write location data to union (will reuse previously stored data if readGNSS did not occur during this cycle)
   moSbdMessage.latitude = latitude * 1000000;
   moSbdMessage.longitude = longitude * 1000000;
   moSbdMessage.satellites = satellites;
   //moSbdMessage.hdop = hdop; // Message schema V0.2: This field is no longer included
+
+  //moSbdMessage.StvsnErr = lastStvsnErrCode; // N'est pas inclus dans le plus récent format de message
+  moSbdMessage.BMEMdbErr = lastBMEMdbErrCode;
+  moSbdMessage.luminoMdbErr = lastLuminoMdbErrCode;
+
+  // Clear all statistics objects
+  clearStats();
 }
 
 // Clear statistics objects
@@ -72,6 +71,16 @@ void clearStats()
   humBMEMdbStats.clear();
   presBMEMdbStats.clear();
   luminoMdbStats.clear();
+
+  // Clear wind gust speed and direction maximums
+  windGustSpeed = 0;
+  windGustDirection = 0;
+  windDirectionSector = 0;
+
+  // Clear latest error codes from bridge
+  lastStvsnErrCode = 0;
+  lastBMEMdbErrCode = 0;
+  lastLuminoMdbErrCode = 0;
 }
 
 // Print statistics

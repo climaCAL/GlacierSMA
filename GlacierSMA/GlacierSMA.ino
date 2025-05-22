@@ -324,8 +324,9 @@ float         latitude          = 0.0;    // GNSS latitude (DD)
 float         longitude         = 0.0;    // GNSS longitude (DD)
 byte          satellites        = 0;      // GNSS satellites
 float         hdop              = 0.0;    // GNSS HDOP
-uint16_t      lastStvsnErrCode  = 0;      // Last status of Stevenson Error Code
-uint16_t      lastBMEMdbErrCode = 0;      // last err code du BME280 Modbus
+uint16_t      lastStvsnErrCode  = 0;      // Last error code from Stevenson
+uint8_t       lastBMEMdbErrCode = 0;      // Last error code du BME280 Modbus
+uint8_t       lastLuminoMdbErrCode = 0;   // Last error code du Luxmètre Modbus
 
 // ----------------------------------------------------------------------------
 // Unions/structures
