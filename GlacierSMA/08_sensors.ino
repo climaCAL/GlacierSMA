@@ -967,13 +967,13 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
     } else {
       if (bridgeDataRaw.luminoMdb > 0) {
         float tempLum = bridgeDataRaw.luminoMdb / facteurMultLumino;
-        bridgeData.luminomdbAmbExt = pow(10,tempLum);
+        bridgeData.luminoMdbAmbExt = pow(10,tempLum);
       } else
-        bridgeData.luminomdbAmbExt = 0.0;
+        bridgeData.luminoMdbAmbExt = 0.0;
 
       if (solarMdb < 200001) {  //Le capteur ne peut excéder 200klux pour sur.
-        solarMdb = bridgeData.luminomdbAmbExt;
-        luminoMdbStats.add(bridgeData.luminomdbAmbExt);
+        solarMdb = bridgeData.luminoMdbAmbExt;
+        luminoMdbStats.add(bridgeData.luminoMdbAmbExt);
       } else solarMdb = 0.0;
         
       #if CALIBRATE
@@ -984,11 +984,9 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
           DEBUG_PRINTFLN(" ");
       #endif
 
-      bridgeData.luminomdbErr = ((uint8_t)bridgeDataRaw.luminoMdbErr);
+      bridgeData.luminoMdbErr = ((uint8_t)bridgeDataRaw.luminoMdbErr);
       
     }//end-if disabled.luminomdb
-
-
 
     //--- Fin de la grande section de la récupération des valeurs et validation des codes d'erreurs --------------------------
   } //End-if reponse longueur positive du I2C
@@ -1028,10 +1026,10 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
     DEBUG_PRINTF("\tluminoAmbExt: "); DEBUG_PRINTLN(solar);
   }
   if (!disabled.luminomdb) {
-    DEBUG_PRINTF("\tluminoAmbMdbExt: "); DEBUG_PRINTLN(bridgeData.luminomdbAmbExt);
+    DEBUG_PRINTF("\tluminoAmbMdbExt: "); DEBUG_PRINTLN(bridgeData.luminoMdbAmbExt);
   }
 
-//Condition pour statuer sur le bon fonctionnement de la collecte: le Stevenson et/ou le BMEmodbus ont répondu ok
+  //Condition pour statuer sur le bon fonctionnement de la collecte: le Stevenson et/ou le BMEmodbus ont répondu ok
   //Il faut considérer qu'un ou l'autre pourrait ne pas être présent (selon la config disabled).
   //Logique: si le Stevenson indique une erreur ET qu'un ou l'autre des capteurs du stevenson est présent,
   //  alors on a une erreur valide provenant du Stevenson.
@@ -1040,7 +1038,7 @@ bool readBridgeData(unsigned int bridgeSettleDelay)
   //Dans le cas contraire, la collecte a été bonne.
   //27 avril 2025: ajout du cas du luminomdb
 
-  if (((bridgeData.stvsnErrCode & STVSN_UNREACHABLE) && (!disabled.bme280stv || !disabled.veml77stv)) || (bridgeData.BMEMdbErr && !disabled.bme280mdb) || (bridgeData.luminomdbErr && !disabled.luminomdb))
+  if (((bridgeData.stvsnErrCode & STVSN_UNREACHABLE) && (!disabled.bme280stv || !disabled.veml77stv)) || (bridgeData.BMEMdbErr && !disabled.bme280mdb) || (bridgeData.luminoMdbErr && !disabled.luminomdb))
    retCode = false;
   else
    retCode = true;

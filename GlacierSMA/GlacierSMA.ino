@@ -371,8 +371,8 @@ struct sensorsData {
   float humBMEMdb = 0.0;                 //v0.9
   float presBMEMdb = 0.0;                //v0.9
   uint8_t BMEMdbErr = 0;                 //v0.9 0=success
-  float luminomdbAmbExt = 0.0;           //v0.11
-  uint8_t luminomdbErr = 0;              //v0.11
+  float luminoMdbAmbExt = 0.0;           //v0.11
+  uint8_t luminoMdbErr = 0;              //v0.11
 };
 
 // Union to store Iridium Short Burst Data (SBD) Mobile Originated (MO) messages
@@ -407,7 +407,10 @@ typedef union
     uint8_t   transmitStatus;     // Iridium return code            (1 byte)
 
     uint16_t  iterationCounter;   // Message counter                (2 bytes)
-  } __attribute__((packed));                              // Total: (48 bytes)
+
+    uint8_t   BMEMdbErr;          // Code d'erreur BME modbus       (1 byte)
+    uint8_t   luminoMdbErr;       // Code d'erreur Luxmètre modbus  (1 byte)
+  } __attribute__((packed));                              // Total: (50 bytes)
   uint8_t bytes[48];
 } SBD_MO_MESSAGE;
 static_assert(sizeof(SBD_MO_MESSAGE) <= 50, "Message structure exceeds a single credit (50 bytes).");
